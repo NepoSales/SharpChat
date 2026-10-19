@@ -24,6 +24,7 @@ Last update: 2026-10-18
 - `develop`: integration branch. Every finished phase is merged here with `--no-ff`.
 - `phase-N-<name>` (e.g. `phase-1-auth`): one branch per phase, created from `develop` and deleted after the merge.
 - Pushing to `origin` is done when it makes sense (e.g. after a phase is merged), always confirmed first.
+- Full rules: `DECISIONS.md`, section 9 (Git workflow).
 
 ### Summary template
 

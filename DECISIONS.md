@@ -177,6 +177,17 @@ Tests are written along each phase, not only at the end.
 | 8 | Observability stack, test coverage review, README with architecture diagram | Portfolio ready |
 | Later | Deploy | Live demo |
 
+### Git workflow
+
+| Item | Rule |
+|---|---|
+| `main` | Stable releases only. The first merge into `main` is the first stable version of the app |
+| `develop` | Integration branch. Every finished phase is merged here |
+| Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge |
+| Merges | `--no-ff`, so each phase stays visible as a group in the history |
+| Commits | English, imperative summary line, a body listing what changed. A phase is merged only when its tests pass |
+| Push | To `origin` (GitHub) when it makes sense, e.g. after a phase is merged into `develop`. Always confirmed by me first |
+
 ## 10. Open decisions
 
 None at the moment. New ideas go here before becoming decisions.
@@ -202,3 +213,4 @@ None at the moment. New ideas go here before becoming decisions.
 | 2026-10-18 | Cursor-based pagination for history | Stable with new messages arriving, fast with an index, standard in chat apps |
 | 2026-10-18 | Message editing and deletion (soft delete) | Expected in any modern chat; soft delete keeps threads and history consistent |
 | 2026-10-18 | HTTPS redirection/HSTS only outside Development; TLS terminated by a reverse proxy at deploy | Keeps local Docker and tests simple; the HTTPS-only rule still holds in production |
+| 2026-10-18 | Git flow: phase branches → `develop`; `main` only for stable releases; push confirmed manually | Keeps `main` always stable and the history organized by phase, which reads well in a portfolio |
