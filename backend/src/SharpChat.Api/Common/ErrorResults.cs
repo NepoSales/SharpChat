@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using SharpChat.Application.Common;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Api.Common;
 

@@ -9,10 +9,12 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using SharpChat.Application.Abstractions;
 using SharpChat.Application.Auth;
+using SharpChat.Application.Conversations;
 using SharpChat.Infrastructure.Authentication;
 using SharpChat.Infrastructure.HealthChecks;
 using SharpChat.Infrastructure.Identity;
 using SharpChat.Infrastructure.Persistence;
+using SharpChat.Infrastructure.Persistence.Queries;
 using SharpChat.Infrastructure.Persistence.Repositories;
 using StackExchange.Redis;
 
@@ -40,8 +42,15 @@ public static class DependencyInjection
 
         services.AddIdentityAndJwt();
 
+        services.AddOptions<ChatOptions>()
+            .BindConfiguration(ChatOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IConversationQueries, ConversationQueries>();
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;

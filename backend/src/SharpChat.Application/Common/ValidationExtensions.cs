@@ -1,4 +1,5 @@
 using FluentValidation.Results;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Application.Common;
 

@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SharpChat.Application.Abstractions;
-using SharpChat.Application.Common;
 using SharpChat.Application.Users;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Infrastructure.Identity;
 
@@ -61,6 +61,26 @@ internal sealed class IdentityService(UserManager<ApplicationUser> userManager, 
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
         return user is null ? null : ToDto(user);
+    }
+
+    public async Task<UserDto?> FindByUserNameAsync(string userName, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByNameAsync(userName);
+        return user is null ? null : ToDto(user);
+    }
+
+    public async Task<IReadOnlyList<UserDto>> FindByUserNamesAsync(IReadOnlyCollection<string> userNames, CancellationToken cancellationToken)
+    {
+        if (userNames.Count == 0)
+        {
+            return [];
+        }
+
+        var normalized = userNames.Select(userManager.NormalizeName).ToList();
+        return await userManager.Users
+            .Where(u => normalized.Contains(u.NormalizedUserName))
+            .Select(u => new UserDto(u.Id, u.UserName!, u.Email!))
+            .ToListAsync(cancellationToken);
     }
 
     private static UserDto ToDto(ApplicationUser user) => new(user.Id, user.UserName!, user.Email!);

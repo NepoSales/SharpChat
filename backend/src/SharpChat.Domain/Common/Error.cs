@@ -1,4 +1,4 @@
-namespace SharpChat.Application.Common;
+namespace SharpChat.Domain.Common;
 
 public enum ErrorType
 {
@@ -19,6 +19,8 @@ public sealed record Error(
         new("validation_failed", "One or more validation errors occurred.", ErrorType.Validation, errors);
 
     public static Error Unauthorized(string code, string message) => new(code, message, ErrorType.Unauthorized);
+
+    public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
 
     public static Error NotFound(string code, string message) => new(code, message, ErrorType.NotFound);
 
