@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SharpChat.Application.Auth;
+using SharpChat.Application.Conversations;
 using SharpChat.Application.Users;
 
 namespace SharpChat.Application;
@@ -13,6 +14,8 @@ public static class DependencyInjection
 
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
+        services.AddScoped<MembershipService>();
+        services.AddScoped<ConversationService>();
 
         return services;
     }

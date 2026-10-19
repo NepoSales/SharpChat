@@ -4,6 +4,7 @@ using SharpChat.Application.Abstractions;
 using SharpChat.Application.Common;
 using SharpChat.Application.Users;
 using SharpChat.Domain.Auth;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Application.Auth;
 

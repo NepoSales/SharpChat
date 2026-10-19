@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SharpChat.Api.Common;
 using SharpChat.Application.Users;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Api.Controllers;
 

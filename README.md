@@ -49,5 +49,13 @@ dotnet ef migrations add <Name> -p src/SharpChat.Infrastructure -s src/SharpChat
 | POST | `/api/auth/refresh` | — | Exchange a refresh token for a new pair (rotation) |
 | POST | `/api/auth/logout` | — | Revoke the session of a refresh token |
 | GET | `/api/users/me` | Bearer | Current user |
+| POST | `/api/conversations` | Bearer | Create a conversation (optionally with `memberUserNames`) |
+| GET | `/api/conversations` | Bearer | Conversations I'm a member of |
+| GET | `/api/conversations/{id}` | Bearer | Conversation details and members |
+| POST | `/api/conversations/{id}/members` | Bearer (owner/admin) | Add a member by username |
+| PATCH | `/api/conversations/{id}/members/{userId}` | Bearer (owner) | Change a member's role |
+| DELETE | `/api/conversations/{id}/members/{userId}` | Bearer | Remove a member, or leave (own id) |
+
+Non-members get `404` for a conversation, so they can't tell whether it exists.
 
 Errors use [ProblemDetails](https://www.rfc-editor.org/rfc/rfc9457) with a machine-readable `code` (e.g. `email_taken`, `invalid_credentials`).

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SharpChat.Domain.Auth;
+using SharpChat.Domain.Conversations;
 using SharpChat.Infrastructure.Identity;
 
 namespace SharpChat.Infrastructure.Persistence;
@@ -13,6 +14,8 @@ public sealed class SharpChatDbContext(DbContextOptions<SharpChatDbContext> opti
     : IdentityUserContext<ApplicationUser, Guid>(options)
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ConversationMember> ConversationMembers => Set<ConversationMember>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

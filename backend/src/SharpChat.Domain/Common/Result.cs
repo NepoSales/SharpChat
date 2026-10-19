@@ -1,6 +1,26 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace SharpChat.Application.Common;
+namespace SharpChat.Domain.Common;
+
+/// <summary>Outcome of an operation without a value: success or an <see cref="Common.Error"/>.</summary>
+public sealed class Result
+{
+    private Result(Error? error)
+    {
+        Error = error;
+    }
+
+    public Error? Error { get; }
+
+    [MemberNotNullWhen(false, nameof(Error))]
+    public bool IsSuccess => Error is null;
+
+    public static Result Success() => new(null);
+
+    public static Result Failure(Error error) => new(error);
+
+    public static implicit operator Result(Error error) => Failure(error);
+}
 
 /// <summary>Outcome of a use case: either a value or an <see cref="Common.Error"/>. Expected failures never throw.</summary>
 public sealed class Result<T>

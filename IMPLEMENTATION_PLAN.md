@@ -47,10 +47,10 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 | | |
 |---|---|
-| **Current phase** | Phase 2: Conversations and members |
-| **Next step** | Model `Conversation` and `ConversationMember` in Domain, with the membership rules |
+| **Current phase** | Phase 3: Realtime messaging (MVP) |
+| **Next step** | Model `Message` in Domain (client-generated Id, raw markdown) and its index on (`ConversationId`, `SentAt`, `Id`) |
 | **Blockers** | None |
-| **Last session** | 2026-10-18: Phase 1 finished (Identity, JWT, refresh token rotation, 33 tests) |
+| **Last session** | 2026-10-18: Phase 2 finished (conversations, members, roles, member limit under concurrency, 58 tests) |
 
 ---
 
@@ -58,7 +58,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 - [x] **Phase 0**: Foundation (solution, Docker Compose, health check)
 - [x] **Phase 1**: Authentication (register, login, JWT + refresh token)
-- [ ] **Phase 2**: Conversations and members (REST)
+- [x] **Phase 2**: Conversations and members (REST)
 - [ ] **Phase 3**: Realtime messaging, persistence, history (**MVP**)
 - [ ] **Phase 4**: React frontend (dark theme, markdown, code blocks)
 - [ ] **Phase 5**: Reliability (idempotency, reconnect sync, delivered/read)
@@ -154,25 +154,42 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 **Goal**: create groups, add/remove people.
 
 ### Tasks
-- [ ] Domain: `Conversation`, `ConversationMember` with roles (`Owner`, `Admin`, `Member`)
-- [ ] Domain rules: max members (from config), creator becomes `Owner`, only `Owner`/`Admin` manage members, `Owner` can't be removed
-- [ ] EF Core mapping, constraints and migration
-- [ ] `POST /api/conversations` (create, creator is `Owner`)
-- [ ] `GET /api/conversations` (only conversations the user belongs to)
-- [ ] `GET /api/conversations/{id}` (members only)
-- [ ] `POST /api/conversations/{id}/members` (add member)
-- [ ] `DELETE /api/conversations/{id}/members/{userId}` (remove member, or leave)
-- [ ] `PATCH /api/conversations/{id}/members/{userId}` (change role)
-- [ ] Membership check as a reusable application service (will be reused by the Hub)
-- [ ] Non-members get 404 (don't reveal that the conversation exists)
-- [ ] Unit tests: domain rules (limit, roles, owner protection)
-- [ ] Integration tests: membership enforcement, role permissions
+- [x] Domain: `Conversation`, `ConversationMember` with roles (`Owner`, `Admin`, `Member`)
+- [x] Domain rules: max members (from config), creator becomes `Owner`, only `Owner`/`Admin` manage members, `Owner` can't be removed
+- [x] EF Core mapping, constraints and migration
+- [x] `POST /api/conversations` (create, creator is `Owner`)
+- [x] `GET /api/conversations` (only conversations the user belongs to)
+- [x] `GET /api/conversations/{id}` (members only)
+- [x] `POST /api/conversations/{id}/members` (add member)
+- [x] `DELETE /api/conversations/{id}/members/{userId}` (remove member, or leave)
+- [x] `PATCH /api/conversations/{id}/members/{userId}` (change role)
+- [x] Membership check as a reusable application service (will be reused by the Hub)
+- [x] Non-members get 404 (don't reveal that the conversation exists)
+- [x] Unit tests: domain rules (limit, roles, owner protection)
+- [x] Integration tests: membership enforcement, role permissions
 
 ### Done when
-- [ ] Groups can be created and managed through the API, with permissions enforced on the server
-- [ ] Tests pass
+- [x] Groups can be created and managed through the API, with permissions enforced on the server
+- [x] Tests pass
 
-**Summary**: _not finished yet_
+**Summary** (finished 2026-10-18)
+- **Built**: you can create a conversation (with optional initial members), list your conversations, see details, add members by username, change roles and remove members or leave. Every rule lives in the `Conversation` aggregate. Concurrent changes are guarded by `xmin`, so the member limit holds under a race.
+- **Key files**:
+  - Domain: `Domain/Conversations/Conversation.cs` (all rules), `ConversationMember.cs`, `ConversationRole.cs`, `ConversationErrors.cs`, and `Domain/Common/Result.cs` + `Error.cs` (moved from Application, now with a non-generic `Result`).
+  - Application: `Conversations/ConversationService.cs` (commands), `Conversations/MembershipService.cs` (reusable membership check), `Conversations/ChatOptions.cs` (`Chat:MaxGroupMembers`), `Abstractions/IConversationRepository.cs`, `IConversationQueries.cs`, `CurrentUserExtensions.cs` (`RequiredUserId()`).
+  - Infrastructure: `Persistence/Configurations/ConversationConfiguration.cs`, `Persistence/Repositories/ConversationRepository.cs`, `Persistence/Queries/ConversationQueries.cs`.
+  - Api: `Controllers/ConversationsController.cs`, and `JsonStringEnumConverter` in `Program.cs`.
+  - Tests: `IntegrationTests/Infrastructure/TestUser.cs` (logged-in user with its own HttpClient) and `Conversations/ConversationApi.cs` (helpers).
+- **How to run / test**: `dotnet test` runs 35 unit and 23 integration tests. To use a smaller member limit in a test, use `factory.WithWebHostBuilder(b => b.UseSetting("Chat:MaxGroupMembers", "3"))`.
+- **Decisions taken during the phase**: all added to DECISIONS.md: the membership rules (section 7), `Result` in Domain, the repository/queries split, concurrency through `UpdatedAt` + `xmin`, and enums as strings.
+- **Notes for next phases**:
+  - Phase 3: the hub should use `MembershipService.IsMemberAsync` for each send, and `IConversationQueries.ListForUserAsync` to join groups on connect. When a member is added or removed, the server has to update their SignalR groups. Hook into `ConversationService.AddMemberAsync` and `RemoveMemberAsync`, for example through a notifier interface.
+  - Phase 5: add `LastReadMessageId` to `ConversationMember`, as planned in section 7.
+  - The conversation list is ordered by `UpdatedAt`. Phase 3 should change it to the last message time.
+- **Known limitations / leftovers**:
+  - No ownership transfer, rename or delete for conversations.
+  - No user search endpoint; the frontend will need one in Phase 4 to add members.
+  - The conversation list isn't paginated.
 
 ---
 
@@ -330,6 +347,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-18 | 2 | Conversations and members: aggregate rules, REST endpoints, queries, concurrency; Phase 2 done | Start Phase 3 |
 | 2026-10-18 | — | Backend moved to `backend/` (solution, props, src, tests); Compose context updated | Start Phase 2 |
 | 2026-10-18 | 1 | Auth: register/login/refresh/logout, `/users/me`, auth by default, ProblemDetails; Phase 1 done | Start Phase 2 |
 | 2026-10-18 | 0 | Solution, Docker Compose, health checks, integration test infra; Phase 0 done | Start Phase 1 |

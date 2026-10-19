@@ -1,5 +1,5 @@
 using SharpChat.Application.Abstractions;
-using SharpChat.Application.Common;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Application.Users;
 

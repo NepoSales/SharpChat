@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
-using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using NSubstitute;
 using SharpChat.Application.Abstractions;
 using SharpChat.Application.Auth;
 using SharpChat.Application.Common;
 using SharpChat.Application.Users;
 using SharpChat.Domain.Auth;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.UnitTests.Application;
 

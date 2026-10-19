@@ -133,6 +133,14 @@ Dark, neutral palette with a single accent color.
 
 Threads have one level only: a reply cannot have its own thread.
 
+**Membership rules** (enforced in the `Conversation` aggregate):
+- Role hierarchy: `Owner > Admin > Member`. The creator is the `Owner`.
+- `Owner` and `Admin` add members. Members are added by **username**.
+- A member can only remove members with a **lower** role. Anyone except the `Owner` can leave.
+- The `Owner` can't leave or be removed. Ownership transfer is not supported yet.
+- Only the `Owner` changes roles (`Admin` ↔ `Member`). The `Owner` role can't be assigned.
+- Non-members get **404**, so they can't tell whether a conversation exists. Members without permission get **403**.
+
 **Editing and deletion:**
 - **Edit**: only the author can edit. The message shows an "edited" label. No edit history is kept.
 - **Delete**: the author can delete their own messages; `Owner` and `Admin` can delete any message in the conversation.
@@ -228,3 +236,8 @@ New ideas go here before becoming decisions.
 | 2026-10-18 | Identity without roles (`IdentityUserContext`) | Roles in SharpChat are per conversation (`ConversationMember.Role`), not global |
 | 2026-10-18 | JWT signing key only from user-secrets / `.env`; startup fails without it | The key is never committed; misconfiguration is caught at startup |
 | 2026-10-18 | Backend in `backend/`, frontend in `web/`; Docker Compose and docs at the root | Clear separation of the two apps; the root holds only what is shared |
+| 2026-10-18 | `Result`/`Error` live in Domain; aggregates return results instead of throwing | Business rule violations are expected outcomes, not exceptions; same type flows from Domain to the API |
+| 2026-10-18 | Commands load the aggregate (`IConversationRepository`); reads go through `IConversationQueries` returning DTOs | Rules stay in the domain; reads stay fast and can join usernames without loading aggregates |
+| 2026-10-18 | Conversation row changes on every membership change (`UpdatedAt`) and is guarded by `xmin` | Concurrent adds can't exceed the member limit; the loser gets `409 concurrent_update` |
+| 2026-10-18 | Membership rules (see section 7) | Simple hierarchy, easy to explain; protects the owner |
+| 2026-10-18 | Enums serialized as strings in the API, roles stored as strings in the database | Readable payloads and data; adding a role doesn't shift numeric values |
