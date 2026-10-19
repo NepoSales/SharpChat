@@ -31,7 +31,6 @@ public static class DependencyInjection
 
         services.AddDbContext<SharpChatDbContext>(options => options.UseNpgsql(postgres));
 
-        // AbortOnConnectFail=false lets the API start while Redis is down; the readiness check reports it.
         var redisOptions = ConfigurationOptions.Parse(redis);
         redisOptions.AbortOnConnectFail = false;
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions));
@@ -51,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IConversationQueries, ConversationQueries>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IMessageQueries, MessageQueries>();
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;
@@ -82,13 +83,11 @@ public static class DependencyInjection
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 
-        // Configured through options so the key is read (and validated) at startup, not at registration.
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
             {
                 var jwt = jwtOptions.Value;
-
-                // Keep claim names as issued ("sub", "name") instead of mapping them to long XML claim types.
+                
                 bearer.MapInboundClaims = false;
                 bearer.TokenValidationParameters = new TokenValidationParameters
                 {

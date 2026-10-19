@@ -55,7 +55,6 @@ public sealed class ConversationsController(ConversationService conversations) :
         return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
     }
 
-    /// <summary>Removes a member. Passing your own user id leaves the conversation.</summary>
     [HttpDelete("{id:guid}/members/{userId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

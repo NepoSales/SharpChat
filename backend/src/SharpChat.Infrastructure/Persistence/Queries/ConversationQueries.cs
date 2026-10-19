@@ -11,16 +11,25 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
         await db.ConversationMembers
             .AsNoTracking()
             .Where(m => m.UserId == userId)
-            .Join(db.Conversations, m => m.ConversationId, c => c.Id, (m, c) => new { Member = m, Conversation = c })
-            .OrderByDescending(x => x.Conversation.UpdatedAt)
+            .Join(db.Conversations, m => m.ConversationId, c => c.Id, (m, c) => new
+            {
+                Member = m,
+                Conversation = c,
+                LastMessageAt = db.Messages.Where(msg => msg.ConversationId == c.Id).Max(msg => (DateTimeOffset?)msg.SentAt),
+            })
+            .OrderByDescending(x => x.LastMessageAt ?? x.Conversation.UpdatedAt)
             .Select(x => new ConversationSummaryDto(
                 x.Conversation.Id,
                 x.Conversation.Name,
                 x.Conversation.Members.Count,
                 x.Member.Role,
                 x.Conversation.CreatedAt,
-                x.Conversation.UpdatedAt))
+                x.Conversation.UpdatedAt,
+                x.LastMessageAt))
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<MemberDto>> ListMembersAsync(Guid conversationId, CancellationToken cancellationToken) =>
+        await Members(conversationId).ToListAsync(cancellationToken);
 
     public async Task<ConversationDto?> GetDetailsAsync(Guid conversationId, CancellationToken cancellationToken)
     {

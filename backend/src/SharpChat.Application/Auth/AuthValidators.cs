@@ -18,7 +18,6 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .Must(name => name.All(UserNameAllowedCharacters.Contains))
             .WithMessage("Username can only contain letters, digits, '.', '_' and '-'.");
 
-        // Strength rules (length, character classes) are enforced by ASP.NET Core Identity.
         RuleFor(x => x.Password).NotEmpty().MaximumLength(128);
     }
 }

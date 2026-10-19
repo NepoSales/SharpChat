@@ -4,7 +4,6 @@ namespace SharpChat.Domain.Conversations;
 
 public static class ConversationErrors
 {
-    /// <summary>Also returned to non-members, so they can't tell whether a conversation exists.</summary>
     public static readonly Error NotFound = Error.NotFound("conversation_not_found", "Conversation not found.");
 
     public static readonly Error MemberNotFound = Error.NotFound("member_not_found", "This user is not a member of the conversation.");

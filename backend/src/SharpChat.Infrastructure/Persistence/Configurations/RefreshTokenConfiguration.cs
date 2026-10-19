@@ -18,7 +18,6 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
 
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
 
-        // Maps to Postgres' xmin system column: two concurrent rotations of the same token can't both succeed.
         builder.Property<uint>("Version").IsRowVersion();
     }
 }

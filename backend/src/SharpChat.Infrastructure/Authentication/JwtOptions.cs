@@ -14,7 +14,6 @@ public sealed class JwtOptions
     [Required]
     public string Audience { get; set; } = null!;
 
-    /// <summary>HMAC-SHA256 key. Never committed: set via user-secrets locally or an environment variable.</summary>
     [Required]
     [MinLength(32, ErrorMessage = "Jwt:SigningKey must be at least 32 characters.")]
     public string SigningKey { get; set; } = null!;

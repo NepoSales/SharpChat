@@ -18,6 +18,9 @@ public sealed record Error(
     public static Error Validation(IReadOnlyDictionary<string, string[]> errors) =>
         new("validation_failed", "One or more validation errors occurred.", ErrorType.Validation, errors);
 
+    public static Error Validation(string field, string message) =>
+        Validation(new Dictionary<string, string[]> { [field] = [message] });
+
     public static Error Unauthorized(string code, string message) => new(code, message, ErrorType.Unauthorized);
 
     public static Error Forbidden(string code, string message) => new(code, message, ErrorType.Forbidden);
