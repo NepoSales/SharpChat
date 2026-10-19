@@ -65,7 +65,7 @@ sharpchat/
 │   └── tests/
 │       ├── SharpChat.UnitTests/
 │       └── SharpChat.IntegrationTests/
-└── web/                           # React + TypeScript frontend
+└── frontend/                      # React + TypeScript frontend (Vite)
 ```
 
 ## 5. Tech stack
@@ -255,3 +255,4 @@ New ideas go here before becoming decisions.
 | 2026-10-19 | History cursor is opaque (base64url of `SentAt` ticks + `Id`); pages come newest first, items oldest first | Clients don't depend on the format; the newest messages load first, ready to render top-down |
 | 2026-10-19 | `SentAt` set by the server and truncated to microseconds | Server time can't be faked by clients; matches Postgres precision, so values seen in realtime events are valid cursors |
 | 2026-10-19 | Microsoft packages on 10.0.13 (CVE-2026-70159, SignalR DoS) | Patched version; the Docker image (`aspnet:10.0`) already runs 10.0.13 |
+| 2026-10-19 | Frontend folder is `frontend/` (replaces `web/`) | Mirrors `backend/`, so the two apps read as a pair |
