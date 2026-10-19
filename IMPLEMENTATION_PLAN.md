@@ -48,7 +48,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 | | |
 |---|---|
 | **Current phase** | Phase 4: React frontend |
-| **Next step** | Scaffold `web/` (Vite + React + TypeScript) with the design tokens from DECISIONS.md section 6 |
+| **Next step** | Review the existing Vite scaffold in `frontend/` (created by the user, not committed yet), then add the design tokens from DECISIONS.md section 6 |
 | **Blockers** | None |
 | **Last session** | 2026-10-19: Phase 3 finished (SignalR hub, persisted messages, cursor history, CVE patch, 73 tests) |
 
@@ -239,7 +239,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 **Goal**: usable dev chat in the browser.
 
 ### Tasks
-- [ ] `web/` with Vite + React + TypeScript, ESLint + Prettier
+- [ ] `frontend/` with Vite + React + TypeScript, ESLint + Prettier (scaffold already created by the user)
 - [ ] Design tokens as CSS variables (palette from `DECISIONS.md` section 6), JetBrains Mono for code
 - [ ] Logo `#Chat` and compact `#` favicon
 - [ ] API client with access token handling and automatic refresh
@@ -364,6 +364,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-19 | — | Frontend folder decided: `frontend/` (not `web/`). Vite scaffold exists there, uncommitted. Local .NET runtime still 10.0.12 (user to update) | Phase 4: review scaffold |
 | 2026-10-19 | 3 | Realtime MVP: hub, send/receive, history with cursor, idempotent resend; Microsoft packages → 10.0.13 (CVE-2026-70159); code comments removed project-wide | Start Phase 4 |
 | 2026-10-18 | — | `/api` prefix removed; push rule: only the user pushes, Claude notifies | — |
 | 2026-10-18 | 2 | Conversations and members: aggregate rules, REST endpoints, queries, concurrency; Phase 2 done | Start Phase 3 |
