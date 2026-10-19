@@ -3,7 +3,7 @@ name: sharpchat
 services:
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: src/SharpChat.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development

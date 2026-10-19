@@ -49,18 +49,23 @@ Rule: the concept adds these features and nothing else for now. New ideas go to 
 
 ```
 sharpchat/
-├── SharpChat.sln
-├── docker-compose.yml
+├── docker-compose.yml             # Orchestrates backend, frontend and dependencies
+├── .env.example                   # Template for local secrets (.env is gitignored)
 ├── DECISIONS.md
-├── src/
-│   ├── SharpChat.Domain/          # Entities and business rules
-│   ├── SharpChat.Application/     # Use cases, interfaces, DTOs, validation
-│   ├── SharpChat.Infrastructure/  # EF Core, repositories, Redis, JWT, Identity
-│   └── SharpChat.Api/             # Controllers, SignalR Hubs, middleware, Program.cs
-├── tests/
-│   ├── SharpChat.UnitTests/
-│   └── SharpChat.IntegrationTests/
-└── web/                         # React + TypeScript frontend
+├── IMPLEMENTATION_PLAN.md
+├── backend/
+│   ├── SharpChat.sln
+│   ├── Directory.Build.props      # Shared build settings
+│   ├── Directory.Packages.props   # Central package versions
+│   ├── src/
+│   │   ├── SharpChat.Domain/          # Entities and business rules
+│   │   ├── SharpChat.Application/     # Use cases, interfaces, DTOs, validation
+│   │   ├── SharpChat.Infrastructure/  # EF Core, repositories, Redis, JWT, Identity
+│   │   └── SharpChat.Api/             # Controllers, SignalR Hubs, middleware, Program.cs
+│   └── tests/
+│       ├── SharpChat.UnitTests/
+│       └── SharpChat.IntegrationTests/
+└── web/                           # React + TypeScript frontend
 ```
 
 ## 5. Tech stack
@@ -222,3 +227,4 @@ New ideas go here before becoming decisions.
 | 2026-10-18 | Password policy: min 8 chars, upper + lower + digit; lockout after 5 failures for 5 min | Reasonable baseline; brute force is also covered by rate limiting in Phase 7 |
 | 2026-10-18 | Identity without roles (`IdentityUserContext`) | Roles in SharpChat are per conversation (`ConversationMember.Role`), not global |
 | 2026-10-18 | JWT signing key only from user-secrets / `.env`; startup fails without it | The key is never committed; misconfiguration is caught at startup |
+| 2026-10-18 | Backend in `backend/`, frontend in `web/`; Docker Compose and docs at the root | Clear separation of the two apps; the root holds only what is shared |

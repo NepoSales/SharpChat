@@ -1,4 +1,4 @@
-# Build context: repository root (see docker-compose.yml)
+# Build context: backend/ (see docker-compose.yml at the repository root)
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
