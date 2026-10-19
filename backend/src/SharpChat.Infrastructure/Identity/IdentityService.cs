@@ -23,7 +23,6 @@ internal sealed class IdentityService(UserManager<ApplicationUser> userManager, 
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } unique)
         {
-            // Two registrations raced past Identity's uniqueness check; the database index caught it.
             return unique.ConstraintName?.Contains("Email", StringComparison.OrdinalIgnoreCase) == true
                 ? DuplicateEmail
                 : DuplicateUserName;
@@ -37,7 +36,6 @@ internal sealed class IdentityService(UserManager<ApplicationUser> userManager, 
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            // Hash anyway so the response time doesn't reveal whether the email is registered.
             userManager.PasswordHasher.HashPassword(new ApplicationUser(), password);
             return null;
         }

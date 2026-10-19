@@ -46,7 +46,6 @@ internal sealed class JwtTokenService(IOptions<JwtOptions> options, TimeProvider
         return new NewRefreshToken(token, HashRefreshToken(token), time.GetUtcNow() + options.Value.RefreshTokenLifetime);
     }
 
-    // Refresh tokens are high-entropy random values, so a fast unsalted hash is enough to protect them at rest.
     public string HashRefreshToken(string token) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

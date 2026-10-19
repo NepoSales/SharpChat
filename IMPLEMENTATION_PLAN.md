@@ -47,10 +47,10 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 | | |
 |---|---|
-| **Current phase** | Phase 3: Realtime messaging (MVP) |
-| **Next step** | Model `Message` in Domain (client-generated Id, raw markdown) and its index on (`ConversationId`, `SentAt`, `Id`) |
+| **Current phase** | Phase 4: React frontend |
+| **Next step** | Scaffold `web/` (Vite + React + TypeScript) with the design tokens from DECISIONS.md section 6 |
 | **Blockers** | None |
-| **Last session** | 2026-10-18: Phase 2 finished (conversations, members, roles, member limit under concurrency, 58 tests) |
+| **Last session** | 2026-10-19: Phase 3 finished (SignalR hub, persisted messages, cursor history, CVE patch, 73 tests) |
 
 ---
 
@@ -59,7 +59,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] **Phase 0**: Foundation (solution, Docker Compose, health check)
 - [x] **Phase 1**: Authentication (register, login, JWT + refresh token)
 - [x] **Phase 2**: Conversations and members (REST)
-- [ ] **Phase 3**: Realtime messaging, persistence, history (**MVP**)
+- [x] **Phase 3**: Realtime messaging, persistence, history (**MVP**)
 - [ ] **Phase 4**: React frontend (dark theme, markdown, code blocks)
 - [ ] **Phase 5**: Reliability (idempotency, reconnect sync, delivered/read)
 - [ ] **Phase 6**: Threads, editing and deletion
@@ -198,22 +198,39 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 **Goal**: working chat.
 
 ### Tasks
-- [ ] Domain: `Message` (client-generated Id, conversation, sender, raw markdown content, `SentAt`, `ParentMessageId`, `EditedAt`, `DeletedAt`)
-- [ ] EF Core mapping, migration, index on (`ConversationId`, `SentAt`, `Id`)
-- [ ] Message size limit (configurable) and content validation
-- [ ] SignalR `ChatHub` with JWT auth (`access_token` query string configured explicitly)
-- [ ] On connect: add the connection to SignalR groups for each of the user's conversations
-- [ ] Group sync when membership changes (added → join group, removed → leave group)
-- [ ] `SendMessage` hub method: validate → check membership → **persist** → broadcast → ack the sender
-- [ ] `GET /conversations/{id}/messages?before={cursor}&limit=50` (cursor-based pagination by `SentAt`, `Id`)
-- [ ] Integration tests with a real SignalR client: two users exchange messages; non-member can't send or receive
-- [ ] Integration tests: pagination with equal timestamps, no duplicates or gaps
+- [x] Domain: `Message` (client-generated Id, conversation, sender, raw markdown content, `SentAt`, `ParentMessageId`, `EditedAt`, `DeletedAt`)
+- [x] EF Core mapping, migration, index on (`ConversationId`, `SentAt`, `Id`)
+- [x] Message size limit (configurable) and content validation
+- [x] SignalR `ChatHub` with JWT auth (`access_token` query string configured explicitly)
+- [x] ~~On connect: add the connection to SignalR groups~~ → replaced: delivery goes to the members' user ids, read from the database on every send (see DECISIONS.md)
+- [x] ~~Group sync when membership changes~~ → not needed with the approach above (a test covers removed and added members)
+- [x] `SendMessage` hub method: validate → check membership → **persist** → broadcast → ack the sender
+- [x] `GET /conversations/{id}/messages?before={cursor}&limit=50` (cursor-based pagination by `SentAt`, `Id`)
+- [x] Integration tests with a real SignalR client: two users exchange messages; non-member can't send or receive
+- [x] Integration tests: pagination with equal timestamps, no duplicates or gaps
+- [x] Security: patched CVE-2026-70159 (SignalR DoS) by moving every Microsoft package to 10.0.13
 
 ### Done when
-- [ ] Two clients (e.g. a test or a small script) can chat in real time, and history loads with cursor pagination
-- [ ] Tests pass
+- [x] Two clients (e.g. a test or a small script) can chat in real time, and history loads with cursor pagination
+- [x] Tests pass
 
-**Summary**: _not finished yet_
+**Summary** (finished 2026-10-19)
+- **Built**: the realtime chat MVP. A SignalR hub at `/hubs/chat` handles `SendMessage`: it checks membership, persists the message, broadcasts `MessageReceived` to every connection of every member, then acks the sender. History is served by `GET /conversations/{id}/messages` with an opaque cursor (`before`). Sending the same message Id twice stores the message once. The conversation list is now ordered by the last message.
+- **Key files**:
+  - Domain: `Domain/Messages/Message.cs`, `MessageErrors.cs`.
+  - Application: `Messages/MessageService.cs` (send and history), `Messages/MessageCursor.cs` (encodes `SentAt` ticks + `Id` in base64url), `Messages/MessageContracts.cs`, `Abstractions/IChatNotifier.cs`, `IMessageRepository.cs`, `IMessageQueries.cs`, and `Conversations/ChatOptions.cs` (`MaxMessageLength`, `DefaultHistoryPageSize`).
+  - Infrastructure: `Persistence/Configurations/MessageConfiguration.cs`, `Persistence/Queries/MessageQueries.cs` (row value comparison `(SentAt, Id) < (...)`), and `ConversationQueries.ListMembersAsync` / `LastMessageAt`.
+  - Api: `Hubs/ChatHub.cs` (with `IChatClient`), `Hubs/HubResponse.cs` (hub results use the same error codes as REST), `Hubs/SignalRChatNotifier.cs`, `Hubs/HubAuthentication.cs` (`access_token` accepted only on `/hubs`, `sub` used as the SignalR user id), `Controllers/MessagesController.cs`.
+  - Tests: `IntegrationTests/Messaging/ChatClient.cs`, a real WebSocket client that sends the token in the query string like a browser.
+- **How to run / test**: `dotnet test` runs 35 unit and 38 integration tests. To control time in a test, use `factory.WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddSingleton<TimeProvider>(fakeClock)))`. Start the fake clock at `DateTimeOffset.UtcNow`, because a clock in the past makes the JWT look expired.
+- **Decisions taken during the phase**: all added to DECISIONS.md: delivery to user ids instead of groups, hub responses as `{ data, error }`, `SentAt` truncated to microseconds, the opaque cursor, stateful reconnect kept off, and patch versions bumped for the CVE.
+- **Notes for next phases**:
+  - Phase 4: the frontend connects with `accessTokenFactory` (the SignalR JS client already sends it as `access_token`). It receives `MessageReceived` and dedupes by `id`, because the sender also gets the event. Loading older pages uses `nextCursor` as `before`.
+  - Phase 5: the basic idempotency check exists (an existing Id with the same sender returns the same ack and broadcasts again). Still missing: two *simultaneous* sends with the same Id, which hit the primary key and currently surface as a hub exception, plus delivered/read status.
+  - Phase 7: `Clients.Users(...)` with the Redis backplane costs one publish per member. That is acceptable because of the 100-member cap.
+- **Known limitations / leftovers**:
+  - No "conversation added/removed" event, so a user added to a conversation only sees it after reloading the list. Planned for Phase 4.
+  - Hub methods don't have their own rate limiting yet (Phase 7).
 
 ---
 
@@ -347,6 +364,8 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-19 | 3 | Realtime MVP: hub, send/receive, history with cursor, idempotent resend; Microsoft packages → 10.0.13 (CVE-2026-70159); code comments removed project-wide | Start Phase 4 |
+| 2026-10-18 | — | `/api` prefix removed; push rule: only the user pushes, Claude notifies | — |
 | 2026-10-18 | 2 | Conversations and members: aggregate rules, REST endpoints, queries, concurrency; Phase 2 done | Start Phase 3 |
 | 2026-10-18 | — | Backend moved to `backend/` (solution, props, src, tests); Compose context updated | Start Phase 2 |
 | 2026-10-18 | 1 | Auth: register/login/refresh/logout, `/users/me`, auth by default, ProblemDetails; Phase 1 done | Start Phase 2 |

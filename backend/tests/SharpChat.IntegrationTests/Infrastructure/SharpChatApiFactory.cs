@@ -5,9 +5,6 @@ using Testcontainers.Redis;
 
 namespace SharpChat.IntegrationTests.Infrastructure;
 
-/// <summary>
-/// Runs the API in memory against real Postgres and Redis containers, shared by every test in the collection.
-/// </summary>
 public sealed class SharpChatApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string JwtIssuer = "sharpchat";

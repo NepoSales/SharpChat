@@ -161,7 +161,8 @@ Details (fields, constraints, indexes) will be defined when modeling starts.
 - Never trust a `userId` sent by the client. Always read it from the JWT claims.
 - Every Hub method and endpoint checks that the user is a **member of the conversation**.
 - Edit and delete check **authorship and role** on the server (see section 7), never on the client only.
-- JWT is sent to SignalR via `access_token` query string (browsers can't set headers on WebSockets). Must be configured explicitly.
+- JWT is sent to SignalR via `access_token` query string (browsers can't set headers on WebSockets). Must be configured explicitly. Accepted **only on `/hubs/*`**. Since URLs can end up in logs, request logging stays at `Warning` for `Microsoft.AspNetCore`.
+- SignalR **stateful reconnect stays disabled** (it was the attack surface of CVE-2026-70159). Keep Microsoft packages and the runtime on the latest patch.
 - Rate limiting (built-in ASP.NET Core middleware) and message size limits.
 - HTTPS / WSS only.
 - Passwords hashed by ASP.NET Core Identity (never custom hashing).
@@ -248,3 +249,9 @@ New ideas go here before becoming decisions.
 | 2026-10-18 | Enums serialized as strings in the API, roles stored as strings in the database | Readable payloads and data; adding a role doesn't shift numeric values |
 | 2026-10-18 | Pushes only by me; Claude notifies at strategic points (phase merged, session end with a phase in progress, before risky changes) | I keep control of what reaches GitHub, without having to think about when to push |
 | 2026-10-18 | No `/api` prefix on routes (`/auth`, `/users`, `/conversations`) | Shorter, cleaner URLs. If the frontend is ever served from the same origin, its routes must not collide with these (or a reverse proxy adds a prefix) |
+| 2026-10-18 | No comments in code | Code should explain itself; the reasoning lives in this file, the implementation plan and commit messages |
+| 2026-10-19 | Messages delivered with `Clients.Users(memberIds)`, members read from the database on every send (no SignalR groups) | Delivery always follows the current membership, with no group sync and no per-connection state to move to Redis. Costs one backplane publish per member, which the 100-member cap keeps bounded |
+| 2026-10-19 | Hub methods return `{ data, error }` with the same error codes as REST | The client handles both APIs the same way; no parsing of exception messages |
+| 2026-10-19 | History cursor is opaque (base64url of `SentAt` ticks + `Id`); pages come newest first, items oldest first | Clients don't depend on the format; the newest messages load first, ready to render top-down |
+| 2026-10-19 | `SentAt` set by the server and truncated to microseconds | Server time can't be faked by clients; matches Postgres precision, so values seen in realtime events are valid cursors |
+| 2026-10-19 | Microsoft packages on 10.0.13 (CVE-2026-70159, SignalR DoS) | Patched version; the Docker image (`aspnet:10.0`) already runs 10.0.13 |

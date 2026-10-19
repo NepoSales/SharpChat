@@ -10,6 +10,5 @@ public interface IRefreshTokenRepository
 
     void Add(RefreshToken token);
 
-    /// <exception cref="Common.ConcurrencyConflictException">A token was changed by another request.</exception>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

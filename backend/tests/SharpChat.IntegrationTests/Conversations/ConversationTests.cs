@@ -145,7 +145,6 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
         var second = await TestUser.CreateAsync(smallGroups);
         var conversation = await owner.CreateConversationOkAsync("small", member);
 
-        // One slot left, two requests racing for it.
         var responses = await Task.WhenAll(
             owner.AddMemberAsync(conversation.Id, first.UserName),
             owner.AddMemberAsync(conversation.Id, second.UserName));

@@ -5,7 +5,6 @@ namespace SharpChat.Api.Common;
 
 internal static class ErrorResults
 {
-    /// <summary>Maps an application <see cref="Error"/> to a ProblemDetails response.</summary>
     public static ActionResult ToProblem(this ControllerBase controller, Error error)
     {
         if (error.Type == ErrorType.Validation && error.ValidationErrors is not null)

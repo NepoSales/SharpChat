@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace SharpChat.Domain.Common;
 
-/// <summary>Outcome of an operation without a value: success or an <see cref="Common.Error"/>.</summary>
 public sealed class Result
 {
     private Result(Error? error)
@@ -22,7 +21,6 @@ public sealed class Result
     public static implicit operator Result(Error error) => Failure(error);
 }
 
-/// <summary>Outcome of a use case: either a value or an <see cref="Common.Error"/>. Expected failures never throw.</summary>
 public sealed class Result<T>
 {
     private Result(T? value, Error? error)
@@ -38,7 +36,7 @@ public sealed class Result<T>
     [MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess => Error is null;
 
-#pragma warning disable CA1000 // Factory methods on a generic result type are the clearest API here
+#pragma warning disable CA1000 
     public static Result<T> Success(T value) => new(value, null);
 
     public static Result<T> Failure(Error error) => new(default, error);

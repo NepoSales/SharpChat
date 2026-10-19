@@ -134,7 +134,6 @@ public sealed class ConversationService(
         return (await queries.GetMemberAsync(conversationId, userId, cancellationToken))!;
     }
 
-    /// <summary>Removes a member, or leaves the conversation when <paramref name="userId"/> is the current user.</summary>
     public async Task<Result> RemoveMemberAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken)
     {
         var conversation = await LoadForMemberAsync(conversationId, cancellationToken);
@@ -152,7 +151,6 @@ public sealed class ConversationService(
         return await TrySaveAsync(cancellationToken) is { } conflict ? conflict : Result.Success();
     }
 
-    /// <summary>Loads the aggregate only when the current user is a member; otherwise behaves as if it doesn't exist.</summary>
     private async Task<Conversation?> LoadForMemberAsync(Guid conversationId, CancellationToken cancellationToken)
     {
         var conversation = await conversations.GetByIdAsync(conversationId, cancellationToken);

@@ -14,7 +14,8 @@ public sealed record ConversationSummaryDto(
     int MemberCount,
     ConversationRole MyRole,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? LastMessageAt);
 
 public sealed record ConversationDto(
     Guid Id,

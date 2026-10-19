@@ -1,10 +1,5 @@
 namespace SharpChat.Domain.Auth;
 
-/// <summary>
-/// A refresh token issued to a user. Only the hash of the token is stored.
-/// Tokens are rotated on every use; all tokens descending from the same login share a <see cref="FamilyId"/>,
-/// so reuse of an already rotated token can revoke the whole session.
-/// </summary>
 public sealed class RefreshToken
 {
     private RefreshToken()
@@ -45,7 +40,6 @@ public sealed class RefreshToken
 
     public bool IsActive(DateTimeOffset now) => !IsRevoked && !IsExpired(now);
 
-    /// <summary>Revokes the token. Revoking an already revoked token keeps the original revocation.</summary>
     public void Revoke(DateTimeOffset now, Guid? replacedByTokenId = null)
     {
         if (IsRevoked)

@@ -59,7 +59,7 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
     [Theory]
     [InlineData("Email", "not-an-email")]
     [InlineData("UserName", "bad name!")]
-    [InlineData("Password", "weakpassword")] // passes the validator, rejected by Identity's password rules
+    [InlineData("Password", "weakpassword")]
     public async Task Register_with_invalid_data_returns_validation_errors(string field, string value)
     {
         var user = AuthApi.NewUser();

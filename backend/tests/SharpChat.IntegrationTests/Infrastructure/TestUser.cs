@@ -8,8 +8,7 @@ using SharpChat.IntegrationTests.Auth;
 
 namespace SharpChat.IntegrationTests.Infrastructure;
 
-/// <summary>A registered, logged-in user with an HttpClient that sends their access token.</summary>
-public sealed record TestUser(Guid Id, string UserName, HttpClient Client)
+public sealed record TestUser(Guid Id, string UserName, HttpClient Client, string AccessToken = "")
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -24,7 +23,7 @@ public sealed record TestUser(Guid Id, string UserName, HttpClient Client)
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
 
         var me = (await client.GetFromJsonAsync<UserDto>("/users/me"))!;
-        return new TestUser(me.Id, me.UserName, client);
+        return new TestUser(me.Id, me.UserName, client, tokens.AccessToken);
     }
 }
 

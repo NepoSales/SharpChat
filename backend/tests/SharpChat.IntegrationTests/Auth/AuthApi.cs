@@ -5,7 +5,6 @@ using SharpChat.Application.Auth;
 
 namespace SharpChat.IntegrationTests.Auth;
 
-/// <summary>Small helpers over the auth endpoints, so tests read as the flow they check.</summary>
 internal static class AuthApi
 {
     public const string Password = "Secret123";

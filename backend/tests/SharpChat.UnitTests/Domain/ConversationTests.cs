@@ -86,8 +86,8 @@ public sealed class ConversationTests
     [InlineData(Actor.Owner, Actor.Admin, true)]
     [InlineData(Actor.Owner, Actor.Member, true)]
     [InlineData(Actor.Admin, Actor.Member, true)]
-    [InlineData(Actor.Admin, Actor.Admin, true)] // leaving
-    [InlineData(Actor.Member, Actor.Member, true)] // leaving
+    [InlineData(Actor.Admin, Actor.Admin, true)]
+    [InlineData(Actor.Member, Actor.Member, true)]
     [InlineData(Actor.Member, Actor.Admin, false)]
     public void Members_can_only_remove_lower_roles_or_themselves(Actor actor, Actor target, bool allowed)
     {

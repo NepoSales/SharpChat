@@ -2,9 +2,6 @@ using SharpChat.Domain.Common;
 
 namespace SharpChat.Domain.Conversations;
 
-/// <summary>
-/// A group conversation and its members. All membership rules live here; a 1:1 chat is a group with two members.
-/// </summary>
 public sealed class Conversation
 {
     public const int NameMaxLength = 100;
@@ -20,12 +17,10 @@ public sealed class Conversation
     public Guid CreatedBy { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
-    /// <summary>Updated on every membership change; also used as the optimistic concurrency boundary.</summary>
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public IReadOnlyCollection<ConversationMember> Members => _members.AsReadOnly();
 
-    /// <summary>Creates a conversation with the creator as <see cref="ConversationRole.Owner"/> plus the initial members.</summary>
     public static Result<Conversation> Create(
         string name,
         Guid creatorId,
@@ -91,7 +86,6 @@ public sealed class Conversation
         return member;
     }
 
-    /// <summary>Removes a member. A member removing themselves is leaving the conversation.</summary>
     public Result RemoveMember(Guid actorId, Guid userId, DateTimeOffset now)
     {
         var actor = FindMember(actorId);

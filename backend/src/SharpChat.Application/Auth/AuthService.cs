@@ -48,7 +48,6 @@ public sealed partial class AuthService(
             return InvalidCredentials;
         }
 
-        // A login starts a new token family (one per session/device).
         var response = IssueTokens(user, familyId: Guid.CreateVersion7(), out _);
         await refreshTokens.SaveChangesAsync(cancellationToken);
         return response;
@@ -71,7 +70,6 @@ public sealed partial class AuthService(
 
         if (stored.IsRevoked)
         {
-            // A rotated token was used again: it may have been stolen, so end the whole session.
             LogRefreshTokenReuse(stored.UserId, stored.FamilyId);
             await RevokeFamilyAsync(stored.FamilyId, now, cancellationToken);
             return InvalidRefreshToken;
@@ -97,14 +95,12 @@ public sealed partial class AuthService(
         }
         catch (ConcurrencyConflictException)
         {
-            // Another request rotated this token at the same time; only one of them wins.
             return InvalidRefreshToken;
         }
 
         return response;
     }
 
-    /// <summary>Ends the session the refresh token belongs to. Unknown tokens are ignored, so logout is idempotent.</summary>
     public async Task LogoutAsync(LogoutRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -143,7 +139,7 @@ public sealed partial class AuthService(
         }
         catch (ConcurrencyConflictException)
         {
-            // A concurrent request changed a token of this family; it is being revoked or rotated already.
+           
         }
     }
 

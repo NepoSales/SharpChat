@@ -10,7 +10,7 @@ internal sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Ap
     {
         builder.ToTable("Users");
 
-        // Identity only checks email uniqueness in code; the unique index also covers concurrent registrations.
+        
         builder.HasIndex(u => u.NormalizedEmail).HasDatabaseName("EmailIndex").IsUnique();
     }
 }

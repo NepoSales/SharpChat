@@ -22,8 +22,6 @@ internal sealed class ConversationConfiguration : IEntityTypeConfiguration<Conve
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Every membership change also updates the conversation row, so xmin makes concurrent changes
-        // (e.g. two adds racing past the member limit) fail instead of both succeeding.
         builder.Property<uint>("Version").IsRowVersion();
     }
 }
@@ -35,7 +33,6 @@ internal sealed class ConversationMemberConfiguration : IEntityTypeConfiguration
         builder.ToTable("ConversationMembers");
         builder.HasKey(m => new { m.ConversationId, m.UserId });
 
-        // "Which conversations is this user in?" runs on every connection and listing.
         builder.HasIndex(m => m.UserId);
 
         builder.Property(m => m.Role).HasConversion<string>().HasMaxLength(16);
