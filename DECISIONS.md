@@ -190,7 +190,9 @@ Tests are written along each phase, not only at the end.
 
 ## 10. Open decisions
 
-None at the moment. New ideas go here before becoming decisions.
+- **Refresh token storage in the browser** (decide in Phase 4): the API currently returns it in the JSON body. Option: move it to an `HttpOnly`, `Secure`, `SameSite=Strict` cookie so JavaScript (and XSS) can't read it.
+
+New ideas go here before becoming decisions.
 
 ## 11. Decision log
 
@@ -214,3 +216,9 @@ None at the moment. New ideas go here before becoming decisions.
 | 2026-10-18 | Message editing and deletion (soft delete) | Expected in any modern chat; soft delete keeps threads and history consistent |
 | 2026-10-18 | HTTPS redirection/HSTS only outside Development; TLS terminated by a reverse proxy at deploy | Keeps local Docker and tests simple; the HTTPS-only rule still holds in production |
 | 2026-10-18 | Git flow: phase branches → `develop`; `main` only for stable releases; push confirmed manually | Keeps `main` always stable and the history organized by phase, which reads well in a portfolio |
+| 2026-10-18 | Auth required by default (fallback policy); public endpoints opt out with `[AllowAnonymous]` | A forgotten attribute fails closed instead of exposing an endpoint |
+| 2026-10-18 | Refresh tokens: random 64 bytes, stored as SHA-256 hash, rotated on every use, grouped in families; reuse of a rotated token revokes the family | Limits the damage of a stolen token and detects theft; a DB leak doesn't expose usable tokens |
+| 2026-10-18 | Access token 15 min, refresh token 14 days | Short-lived access keeps revocation delay small; refresh keeps users logged in |
+| 2026-10-18 | Password policy: min 8 chars, upper + lower + digit; lockout after 5 failures for 5 min | Reasonable baseline; brute force is also covered by rate limiting in Phase 7 |
+| 2026-10-18 | Identity without roles (`IdentityUserContext`) | Roles in SharpChat are per conversation (`ConversationMember.Role`), not global |
+| 2026-10-18 | JWT signing key only from user-secrets / `.env`; startup fails without it | The key is never committed; misconfiguration is caught at startup |

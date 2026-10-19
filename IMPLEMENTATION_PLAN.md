@@ -43,17 +43,17 @@ Last update: 2026-10-18
 
 | | |
 |---|---|
-| **Current phase** | Phase 1: Authentication |
-| **Next step** | Add ASP.NET Core Identity with the `User` entity and its migration |
+| **Current phase** | Phase 2: Conversations and members |
+| **Next step** | Model `Conversation` and `ConversationMember` in Domain, with the membership rules |
 | **Blockers** | None |
-| **Last session** | 2026-10-18: Phase 0 finished (solution, Docker Compose, health checks, Testcontainers) |
+| **Last session** | 2026-10-18: Phase 1 finished (Identity, JWT, refresh token rotation, 33 tests) |
 
 ---
 
 ## Overview
 
 - [x] **Phase 0**: Foundation (solution, Docker Compose, health check)
-- [ ] **Phase 1**: Authentication (register, login, JWT + refresh token)
+- [x] **Phase 1**: Authentication (register, login, JWT + refresh token)
 - [ ] **Phase 2**: Conversations and members (REST)
 - [ ] **Phase 3**: Realtime messaging, persistence, history (**MVP**)
 - [ ] **Phase 4**: React frontend (dark theme, markdown, code blocks)
@@ -108,24 +108,40 @@ Last update: 2026-10-18
 **Goal**: authenticated API.
 
 ### Tasks
-- [ ] ASP.NET Core Identity with a `User` entity, stored in PostgreSQL
-- [ ] `POST /api/auth/register` with validation (email, username, password rules)
-- [ ] `POST /api/auth/login` returns access token (short-lived JWT) + refresh token
-- [ ] Refresh token entity: stored hashed, expiry, revocation, rotation on use
-- [ ] `POST /api/auth/refresh` (rotates the refresh token; reuse of a revoked token revokes the whole family)
-- [ ] `POST /api/auth/logout` (revokes the refresh token)
-- [ ] `GET /api/users/me` (protected endpoint to prove auth works)
-- [ ] JWT settings in configuration (issuer, audience, key, lifetimes); key never committed
-- [ ] Current user service reading the user id **from claims only**
-- [ ] Global error handling middleware with `ProblemDetails`
-- [ ] Unit tests: token generation, validation rules
-- [ ] Integration tests: register → login → access protected endpoint → refresh → logout; invalid/expired token returns 401
+- [x] ASP.NET Core Identity with a `User` entity, stored in PostgreSQL
+- [x] `POST /api/auth/register` with validation (email, username, password rules)
+- [x] `POST /api/auth/login` returns access token (short-lived JWT) + refresh token
+- [x] Refresh token entity: stored hashed, expiry, revocation, rotation on use
+- [x] `POST /api/auth/refresh` (rotates the refresh token; reuse of a revoked token revokes the whole family)
+- [x] `POST /api/auth/logout` (revokes the refresh token)
+- [x] `GET /api/users/me` (protected endpoint to prove auth works)
+- [x] JWT settings in configuration (issuer, audience, key, lifetimes); key never committed
+- [x] Current user service reading the user id **from claims only**
+- [x] Global error handling middleware with `ProblemDetails`
+- [x] Unit tests: token generation, validation rules
+- [x] Integration tests: register → login → access protected endpoint → refresh → logout; invalid/expired token returns 401
 
 ### Done when
-- [ ] A user can register, log in and call a protected endpoint; refresh and logout work
-- [ ] Tests pass
+- [x] A user can register, log in and call a protected endpoint; refresh and logout work
+- [x] Tests pass
 
-**Summary**: _not finished yet_
+**Summary** (finished 2026-10-18)
+- **Built**: register, login, refresh (with rotation and reuse detection) and logout, plus `GET /api/users/me`. Every endpoint requires a JWT unless it is marked `[AllowAnonymous]`. Errors are `ProblemDetails` with a `code` field.
+- **Key files**:
+  - Domain: `Domain/Auth/RefreshToken.cs` (token rules).
+  - Application: `Application/Auth/AuthService.cs` (use cases), `Application/Common/Result.cs` + `Error.cs` (results without exceptions), `Application/Abstractions/*` (ports).
+  - Infrastructure: `Identity/IdentityService.cs` (UserManager, lockout, unique-violation race), `Authentication/JwtTokenService.cs` + `JwtOptions.cs`, `Persistence/Configurations/*`, `DependencyInjection.cs` (Identity options, JWT bearer).
+  - Api: `Controllers/AuthController.cs`, `Common/ErrorResults.cs` (Error → ProblemDetails), `Services/CurrentUser.cs` (reads `sub`).
+- **How to run / test**: run `dotnet user-secrets set "Jwt:SigningKey" ...` once for `dotnet run`, and `cp .env.example .env` once for Docker. `dotnet test` runs 18 unit and 15 integration tests.
+- **Decisions taken during the phase**: all added to DECISIONS.md: auth by default, the refresh token design, token lifetimes, the password and lockout policy, Identity without roles, and where the JWT key lives. One new open decision: where the browser stores the refresh token (Phase 4).
+- **Notes for next phases**:
+  - JWT claims are `sub` (user id), `name` (username) and `jti`, with `MapInboundClaims = false`. In Phase 3 SignalR needs an `IUserIdProvider` that reads `sub`, plus `OnMessageReceived` for the `access_token` query string.
+  - Identity tables are renamed to `Users`, `UserClaims`, `UserLogins` and `UserTokens`. `ApplicationUser` stays in Infrastructure, and Domain refers to users by `Guid` only.
+  - Use cases are concrete classes (`AuthService`, `UserService`) registered in `Application/DependencyInjection.cs`. Controllers map `Result` with `this.ToProblem(error)`.
+- **Known limitations / leftovers**:
+  - Expired or revoked refresh tokens are never deleted (cleanup job, later).
+  - Lockout allows locking someone else's account; rate limiting comes in Phase 7.
+  - No email confirmation or password reset (not in scope).
 
 ---
 
@@ -310,5 +326,6 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-18 | 1 | Auth: register/login/refresh/logout, `/users/me`, auth by default, ProblemDetails; Phase 1 done | Start Phase 2 |
 | 2026-10-18 | 0 | Solution, Docker Compose, health checks, integration test infra; Phase 0 done | Start Phase 1 |
 | 2026-10-18 | — | Decisions documented in `DECISIONS.md`, implementation plan created | Start Phase 0 |
