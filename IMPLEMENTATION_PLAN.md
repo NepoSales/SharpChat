@@ -18,6 +18,13 @@ Last update: 2026-10-18
   5. If a decision changed, update `DECISIONS.md` (section 11, decision log) too.
 - A phase is only finished when its result can be shown on its own (see `DECISIONS.md`, section 9) and its tests pass.
 
+### Git workflow
+
+- `main`: only stable releases. The first merge into `main` is the first stable version of the app.
+- `develop`: integration branch. Every finished phase is merged here with `--no-ff`.
+- `phase-N-<name>` (e.g. `phase-1-auth`): one branch per phase, created from `develop` and deleted after the merge.
+- Pushing to `origin` is done when it makes sense (e.g. after a phase is merged), always confirmed first.
+
 ### Summary template
 
 ```markdown
