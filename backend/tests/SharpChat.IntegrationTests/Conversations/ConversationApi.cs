@@ -9,7 +9,7 @@ internal static class ConversationApi
 {
     public static Task<HttpResponseMessage> CreateConversationAsync(this TestUser user, string name, params TestUser[] members) =>
         user.Client.PostAsJsonAsync(
-            "/api/conversations",
+            "/conversations",
             new CreateConversationRequest(name, [.. members.Select(m => m.UserName)]),
             TestUser.Json);
 
@@ -21,15 +21,15 @@ internal static class ConversationApi
     }
 
     public static Task<HttpResponseMessage> GetConversationAsync(this TestUser user, Guid conversationId) =>
-        user.Client.GetAsync($"/api/conversations/{conversationId}");
+        user.Client.GetAsync($"/conversations/{conversationId}");
 
     public static Task<HttpResponseMessage> AddMemberAsync(this TestUser user, Guid conversationId, string userName) =>
-        user.Client.PostAsJsonAsync($"/api/conversations/{conversationId}/members", new AddMemberRequest(userName), TestUser.Json);
+        user.Client.PostAsJsonAsync($"/conversations/{conversationId}/members", new AddMemberRequest(userName), TestUser.Json);
 
     public static Task<HttpResponseMessage> RemoveMemberAsync(this TestUser user, Guid conversationId, Guid userId) =>
-        user.Client.DeleteAsync($"/api/conversations/{conversationId}/members/{userId}");
+        user.Client.DeleteAsync($"/conversations/{conversationId}/members/{userId}");
 
     public static Task<HttpResponseMessage> ChangeRoleAsync(this TestUser user, Guid conversationId, Guid userId, ConversationRole role) =>
         user.Client.PatchAsJsonAsync(
-            $"/api/conversations/{conversationId}/members/{userId}", new ChangeRoleRequest(role), TestUser.Json);
+            $"/conversations/{conversationId}/members/{userId}", new ChangeRoleRequest(role), TestUser.Json);
 }

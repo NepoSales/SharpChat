@@ -36,7 +36,7 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
         Assert.NotEqual(tokens.RefreshToken, rotated.RefreshToken);
         Assert.Equal(HttpStatusCode.OK, (await _client.GetMeAsync(rotated.AccessToken)).StatusCode);
 
-        var logout = await _client.PostAsJsonAsync("/api/auth/logout", new LogoutRequest(rotated.RefreshToken));
+        var logout = await _client.PostAsJsonAsync("/auth/logout", new LogoutRequest(rotated.RefreshToken));
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.RefreshAsync(rotated.RefreshToken)).StatusCode);
     }
@@ -129,7 +129,7 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
         var phone = await (await _client.LoginAsync(user.Email, user.Password)).Content.ReadFromJsonAsync<AuthResponse>();
         Assert.NotNull(phone);
 
-        await _client.PostAsJsonAsync("/api/auth/logout", new LogoutRequest(laptop.RefreshToken));
+        await _client.PostAsJsonAsync("/auth/logout", new LogoutRequest(laptop.RefreshToken));
 
         Assert.Equal(HttpStatusCode.OK, (await _client.RefreshAsync(phone.RefreshToken)).StatusCode);
     }

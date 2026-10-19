@@ -196,10 +196,15 @@ Tests are written along each phase, not only at the end.
 |---|---|
 | `main` | Stable releases only. The first merge into `main` is the first stable version of the app |
 | `develop` | Integration branch. Every finished phase is merged here |
-| Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge |
+| Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge. Non-phase work uses `chore-<name>` |
 | Merges | `--no-ff`, so each phase stays visible as a group in the history |
 | Commits | English, imperative summary line, a body listing what changed. A phase is merged only when its tests pass |
-| Push | To `origin` (GitHub) when it makes sense, e.g. after a phase is merged into `develop`. Always confirmed by me first |
+| Push | Done **only by me**. Claude never pushes; it tells me when a push is recommended, at the strategic points below |
+
+**Strategic push points** (Claude notifies me, I push):
+1. **Phase merged into `develop`**: push `develop`. Chores merged between phases go out with the next push.
+2. **End of a session with a phase in progress**: push the phase branch as a backup, so unfinished work is never only local.
+3. **Before a risky change** (large refactor, migration rework): push the current branch first, so there is a known-good point on GitHub.
 
 ## 10. Open decisions
 
@@ -241,3 +246,5 @@ New ideas go here before becoming decisions.
 | 2026-10-18 | Conversation row changes on every membership change (`UpdatedAt`) and is guarded by `xmin` | Concurrent adds can't exceed the member limit; the loser gets `409 concurrent_update` |
 | 2026-10-18 | Membership rules (see section 7) | Simple hierarchy, easy to explain; protects the owner |
 | 2026-10-18 | Enums serialized as strings in the API, roles stored as strings in the database | Readable payloads and data; adding a role doesn't shift numeric values |
+| 2026-10-18 | Pushes only by me; Claude notifies at strategic points (phase merged, session end with a phase in progress, before risky changes) | I keep control of what reaches GitHub, without having to think about when to push |
+| 2026-10-18 | No `/api` prefix on routes (`/auth`, `/users`, `/conversations`) | Shorter, cleaner URLs. If the frontend is ever served from the same origin, its routes must not collide with these (or a reverse proxy adds a prefix) |

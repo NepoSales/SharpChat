@@ -23,7 +23,7 @@ Last update: 2026-10-18
 - `main`: only stable releases. The first merge into `main` is the first stable version of the app.
 - `develop`: integration branch. Every finished phase is merged here with `--no-ff`.
 - `phase-N-<name>` (e.g. `phase-1-auth`): one branch per phase, created from `develop` and deleted after the merge.
-- Pushing to `origin` is done when it makes sense (e.g. after a phase is merged), always confirmed first.
+- Pushes are done only by the user. Claude notifies at strategic points: after a phase is merged into `develop`, at the end of a session with a phase in progress, and before risky changes.
 - Full rules: `DECISIONS.md`, section 9 (Git workflow).
 
 ### Paths
@@ -113,12 +113,12 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 ### Tasks
 - [x] ASP.NET Core Identity with a `User` entity, stored in PostgreSQL
-- [x] `POST /api/auth/register` with validation (email, username, password rules)
-- [x] `POST /api/auth/login` returns access token (short-lived JWT) + refresh token
+- [x] `POST /auth/register` with validation (email, username, password rules)
+- [x] `POST /auth/login` returns access token (short-lived JWT) + refresh token
 - [x] Refresh token entity: stored hashed, expiry, revocation, rotation on use
-- [x] `POST /api/auth/refresh` (rotates the refresh token; reuse of a revoked token revokes the whole family)
-- [x] `POST /api/auth/logout` (revokes the refresh token)
-- [x] `GET /api/users/me` (protected endpoint to prove auth works)
+- [x] `POST /auth/refresh` (rotates the refresh token; reuse of a revoked token revokes the whole family)
+- [x] `POST /auth/logout` (revokes the refresh token)
+- [x] `GET /users/me` (protected endpoint to prove auth works)
 - [x] JWT settings in configuration (issuer, audience, key, lifetimes); key never committed
 - [x] Current user service reading the user id **from claims only**
 - [x] Global error handling middleware with `ProblemDetails`
@@ -130,7 +130,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] Tests pass
 
 **Summary** (finished 2026-10-18)
-- **Built**: register, login, refresh (with rotation and reuse detection) and logout, plus `GET /api/users/me`. Every endpoint requires a JWT unless it is marked `[AllowAnonymous]`. Errors are `ProblemDetails` with a `code` field.
+- **Built**: register, login, refresh (with rotation and reuse detection) and logout, plus `GET /users/me`. Every endpoint requires a JWT unless it is marked `[AllowAnonymous]`. Errors are `ProblemDetails` with a `code` field.
 - **Key files**:
   - Domain: `Domain/Auth/RefreshToken.cs` (token rules).
   - Application: `Application/Auth/AuthService.cs` (use cases), `Application/Common/Result.cs` + `Error.cs` (results without exceptions), `Application/Abstractions/*` (ports).
@@ -157,12 +157,12 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] Domain: `Conversation`, `ConversationMember` with roles (`Owner`, `Admin`, `Member`)
 - [x] Domain rules: max members (from config), creator becomes `Owner`, only `Owner`/`Admin` manage members, `Owner` can't be removed
 - [x] EF Core mapping, constraints and migration
-- [x] `POST /api/conversations` (create, creator is `Owner`)
-- [x] `GET /api/conversations` (only conversations the user belongs to)
-- [x] `GET /api/conversations/{id}` (members only)
-- [x] `POST /api/conversations/{id}/members` (add member)
-- [x] `DELETE /api/conversations/{id}/members/{userId}` (remove member, or leave)
-- [x] `PATCH /api/conversations/{id}/members/{userId}` (change role)
+- [x] `POST /conversations` (create, creator is `Owner`)
+- [x] `GET /conversations` (only conversations the user belongs to)
+- [x] `GET /conversations/{id}` (members only)
+- [x] `POST /conversations/{id}/members` (add member)
+- [x] `DELETE /conversations/{id}/members/{userId}` (remove member, or leave)
+- [x] `PATCH /conversations/{id}/members/{userId}` (change role)
 - [x] Membership check as a reusable application service (will be reused by the Hub)
 - [x] Non-members get 404 (don't reveal that the conversation exists)
 - [x] Unit tests: domain rules (limit, roles, owner protection)
@@ -205,7 +205,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [ ] On connect: add the connection to SignalR groups for each of the user's conversations
 - [ ] Group sync when membership changes (added → join group, removed → leave group)
 - [ ] `SendMessage` hub method: validate → check membership → **persist** → broadcast → ack the sender
-- [ ] `GET /api/conversations/{id}/messages?before={cursor}&limit=50` (cursor-based pagination by `SentAt`, `Id`)
+- [ ] `GET /conversations/{id}/messages?before={cursor}&limit=50` (cursor-based pagination by `SentAt`, `Id`)
 - [ ] Integration tests with a real SignalR client: two users exchange messages; non-member can't send or receive
 - [ ] Integration tests: pagination with equal timestamps, no duplicates or gaps
 
@@ -273,7 +273,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 ### Tasks
 - [ ] Thread replies: `ParentMessageId` set, one level only (reply to a reply is rejected)
-- [ ] `GET /api/messages/{id}/replies` with cursor pagination
+- [ ] `GET /messages/{id}/replies` with cursor pagination
 - [ ] Reply count / last reply info on the parent message
 - [ ] Edit: author only, sets `EditedAt`, broadcast edit event
 - [ ] Delete: author, or `Owner`/`Admin`; soft delete (clear content, set `DeletedAt`), broadcast delete event

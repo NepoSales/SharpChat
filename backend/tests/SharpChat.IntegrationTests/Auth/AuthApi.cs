@@ -17,13 +17,13 @@ internal static class AuthApi
     }
 
     public static Task<HttpResponseMessage> RegisterAsync(this HttpClient client, RegisterRequest request) =>
-        client.PostAsJsonAsync("/api/auth/register", request);
+        client.PostAsJsonAsync("/auth/register", request);
 
     public static Task<HttpResponseMessage> LoginAsync(this HttpClient client, string email, string password) =>
-        client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, password));
+        client.PostAsJsonAsync("/auth/login", new LoginRequest(email, password));
 
     public static Task<HttpResponseMessage> RefreshAsync(this HttpClient client, string refreshToken) =>
-        client.PostAsJsonAsync("/api/auth/refresh", new RefreshRequest(refreshToken));
+        client.PostAsJsonAsync("/auth/refresh", new RefreshRequest(refreshToken));
 
     public static async Task<AuthResponse> RegisterAndLoginAsync(this HttpClient client, RegisterRequest? user = null)
     {
@@ -37,7 +37,7 @@ internal static class AuthApi
 
     public static Task<HttpResponseMessage> GetMeAsync(this HttpClient client, string? accessToken)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/users/me");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/users/me");
         if (accessToken is not null)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);

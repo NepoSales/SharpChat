@@ -23,7 +23,7 @@ public sealed record TestUser(Guid Id, string UserName, HttpClient Client)
         var tokens = await client.RegisterAndLoginAsync();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
 
-        var me = (await client.GetFromJsonAsync<UserDto>("/api/users/me"))!;
+        var me = (await client.GetFromJsonAsync<UserDto>("/users/me"))!;
         return new TestUser(me.Id, me.UserName, client);
     }
 }
