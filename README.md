@@ -21,10 +21,12 @@ docker compose up --build
 ## Development
 
 Requirements: .NET 10 SDK and Docker (integration tests start their own containers with Testcontainers).
+The backend lives in `backend/`; run the commands below from there.
 
 ```bash
+cd backend
 dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 48)" --project src/SharpChat.Api   # once
-docker compose up -d postgres redis   # dependencies only
+docker compose -f ../docker-compose.yml up -d postgres redis   # dependencies only
 dotnet run --project src/SharpChat.Api
 dotnet test
 ```

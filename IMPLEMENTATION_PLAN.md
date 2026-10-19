@@ -26,6 +26,10 @@ Last update: 2026-10-18
 - Pushing to `origin` is done when it makes sense (e.g. after a phase is merged), always confirmed first.
 - Full rules: `DECISIONS.md`, section 9 (Git workflow).
 
+### Paths
+
+Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are relative to `backend/`. .NET commands run from `backend/`; `docker compose` runs from the repository root.
+
 ### Summary template
 
 ```markdown
@@ -326,6 +330,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-18 | — | Backend moved to `backend/` (solution, props, src, tests); Compose context updated | Start Phase 2 |
 | 2026-10-18 | 1 | Auth: register/login/refresh/logout, `/users/me`, auth by default, ProblemDetails; Phase 1 done | Start Phase 2 |
 | 2026-10-18 | 0 | Solution, Docker Compose, health checks, integration test infra; Phase 0 done | Start Phase 1 |
 | 2026-10-18 | — | Decisions documented in `DECISIONS.md`, implementation plan created | Start Phase 0 |
