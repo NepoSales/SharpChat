@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharpChat.Application\SharpChat.Application.csproj" />
+    <ProjectReference Include="..\SharpChat.Infrastructure\SharpChat.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
