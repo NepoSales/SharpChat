@@ -44,17 +44,17 @@ dotnet ef migrations add <Name> -p src/SharpChat.Infrastructure -s src/SharpChat
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | — | Create an account |
-| POST | `/api/auth/login` | — | Get an access token (15 min) and a refresh token (14 days) |
-| POST | `/api/auth/refresh` | — | Exchange a refresh token for a new pair (rotation) |
-| POST | `/api/auth/logout` | — | Revoke the session of a refresh token |
-| GET | `/api/users/me` | Bearer | Current user |
-| POST | `/api/conversations` | Bearer | Create a conversation (optionally with `memberUserNames`) |
-| GET | `/api/conversations` | Bearer | Conversations I'm a member of |
-| GET | `/api/conversations/{id}` | Bearer | Conversation details and members |
-| POST | `/api/conversations/{id}/members` | Bearer (owner/admin) | Add a member by username |
-| PATCH | `/api/conversations/{id}/members/{userId}` | Bearer (owner) | Change a member's role |
-| DELETE | `/api/conversations/{id}/members/{userId}` | Bearer | Remove a member, or leave (own id) |
+| POST | `/auth/register` | — | Create an account |
+| POST | `/auth/login` | — | Get an access token (15 min) and a refresh token (14 days) |
+| POST | `/auth/refresh` | — | Exchange a refresh token for a new pair (rotation) |
+| POST | `/auth/logout` | — | Revoke the session of a refresh token |
+| GET | `/users/me` | Bearer | Current user |
+| POST | `/conversations` | Bearer | Create a conversation (optionally with `memberUserNames`) |
+| GET | `/conversations` | Bearer | Conversations I'm a member of |
+| GET | `/conversations/{id}` | Bearer | Conversation details and members |
+| POST | `/conversations/{id}/members` | Bearer (owner/admin) | Add a member by username |
+| PATCH | `/conversations/{id}/members/{userId}` | Bearer (owner) | Change a member's role |
+| DELETE | `/conversations/{id}/members/{userId}` | Bearer | Remove a member, or leave (own id) |
 
 Non-members get `404` for a conversation, so they can't tell whether it exists.
 

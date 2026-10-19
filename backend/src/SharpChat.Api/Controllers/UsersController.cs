@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using SharpChat.Api.Common;
 using SharpChat.Application.Users;
-using SharpChat.Domain.Common;
 
 namespace SharpChat.Api.Controllers;
 
 [ApiController]
-[Route("api/users")]
+[Route("users")]
 public sealed class UsersController(UserService users) : ControllerBase
 {
     [HttpGet("me")]

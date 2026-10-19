@@ -21,7 +21,7 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.ReadAsAsync<ConversationDto>();
-        Assert.Equal($"/api/conversations/{created.Id}", response.Headers.Location?.AbsolutePath);
+        Assert.Equal($"/conversations/{created.Id}", response.Headers.Location?.AbsolutePath);
         Assert.Equal("backend team", created.Name);
         Assert.Contains(created.Members, m => m.UserId == owner.Id && m.UserName == owner.UserName && m.Role == ConversationRole.Owner);
         Assert.Contains(created.Members, m => m.UserId == member.Id && m.Role == ConversationRole.Member);
@@ -29,7 +29,7 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
         var memberView = await member.GetConversationAsync(created.Id);
         Assert.Equal(HttpStatusCode.OK, memberView.StatusCode);
 
-        var memberList = await member.Client.GetFromJsonAsync<List<ConversationSummaryDto>>("/api/conversations", TestUser.Json);
+        var memberList = await member.Client.GetFromJsonAsync<List<ConversationSummaryDto>>("/conversations", TestUser.Json);
         var summary = Assert.Single(memberList!);
         Assert.Equal(2, summary.MemberCount);
         Assert.Equal(ConversationRole.Member, summary.MyRole);
@@ -51,7 +51,7 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
         };
 
         Assert.All(responses, r => Assert.Equal(HttpStatusCode.NotFound, r.StatusCode));
-        Assert.Empty((await outsider.Client.GetFromJsonAsync<List<ConversationSummaryDto>>("/api/conversations", TestUser.Json))!);
+        Assert.Empty((await outsider.Client.GetFromJsonAsync<List<ConversationSummaryDto>>("/conversations", TestUser.Json))!);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
     {
         var anonymous = factory.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/conversations")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/conversations")).StatusCode);
     }
 
     [Fact]

@@ -5,7 +5,7 @@ using SharpChat.Application.Conversations;
 namespace SharpChat.Api.Controllers;
 
 [ApiController]
-[Route("api/conversations")]
+[Route("conversations")]
 public sealed class ConversationsController(ConversationService conversations) : ControllerBase
 {
     [HttpPost]

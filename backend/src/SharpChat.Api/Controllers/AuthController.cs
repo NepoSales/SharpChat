@@ -3,13 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using SharpChat.Api.Common;
 using SharpChat.Application.Auth;
 using SharpChat.Application.Users;
-using SharpChat.Domain.Common;
 
 namespace SharpChat.Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
-[Route("api/auth")]
+[Route("auth")]
 public sealed class AuthController(AuthService auth) : ControllerBase
 {
     [HttpPost("register")]
