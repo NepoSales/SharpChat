@@ -8,6 +8,7 @@ Project decisions are in [DECISIONS.md](DECISIONS.md) and progress is tracked in
 Requirements: Docker with Docker Compose.
 
 ```bash
+cp .env.example .env          # once: then set JWT_SIGNING_KEY (openssl rand -base64 48)
 docker compose up --build
 ```
 
@@ -22,10 +23,13 @@ docker compose up --build
 Requirements: .NET 10 SDK and Docker (integration tests start their own containers with Testcontainers).
 
 ```bash
+dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 48)" --project src/SharpChat.Api   # once
 docker compose up -d postgres redis   # dependencies only
 dotnet run --project src/SharpChat.Api
 dotnet test
 ```
+
+The JWT signing key is never committed: it comes from user-secrets locally and from `.env` in Docker. The API refuses to start without it.
 
 Database migrations are applied automatically on startup in Development. To add one:
 
@@ -33,3 +37,15 @@ Database migrations are applied automatically on startup in Development. To add 
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/SharpChat.Infrastructure -s src/SharpChat.Api -o Persistence/Migrations
 ```
+
+## API
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/auth/register` | — | Create an account |
+| POST | `/api/auth/login` | — | Get an access token (15 min) and a refresh token (14 days) |
+| POST | `/api/auth/refresh` | — | Exchange a refresh token for a new pair (rotation) |
+| POST | `/api/auth/logout` | — | Revoke the session of a refresh token |
+| GET | `/api/users/me` | Bearer | Current user |
+
+Errors use [ProblemDetails](https://www.rfc-editor.org/rfc/rfc9457) with a machine-readable `code` (e.g. `email_taken`, `invalid_credentials`).

@@ -391,3 +391,8 @@ dotnet_naming_style.s_camelcase.capitalization = camel_case
 # EF Core migrations are generated code
 [**/Migrations/*.cs]
 generated_code = true
+
+# Project rules
+[*.cs]
+# Only relevant for consumers in other .NET languages (e.g. VB keyword "Error"); this codebase is C# only
+dotnet_diagnostic.CA1716.severity = none

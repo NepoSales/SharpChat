@@ -10,6 +10,10 @@ namespace SharpChat.IntegrationTests.Infrastructure;
 /// </summary>
 public sealed class SharpChatApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public const string JwtIssuer = "sharpchat";
+    public const string JwtAudience = "sharpchat";
+    public const string JwtSigningKey = "integration-tests-signing-key-not-a-secret-0123456789";
+
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
@@ -23,6 +27,7 @@ public sealed class SharpChatApiFactory : WebApplicationFactory<Program>, IAsync
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Postgres", _postgres.GetConnectionString());
         builder.UseSetting("ConnectionStrings:Redis", _redis.GetConnectionString());
+        builder.UseSetting("Jwt:SigningKey", JwtSigningKey);
     }
 
     async Task IAsyncLifetime.DisposeAsync()
