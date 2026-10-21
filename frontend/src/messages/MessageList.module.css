@@ -1,0 +1,13 @@
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0 var(--space-4);
+  overscroll-behavior: contain;
+}
+
+.hint {
+  margin: var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}

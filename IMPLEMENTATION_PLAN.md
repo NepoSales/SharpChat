@@ -48,7 +48,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 | | |
 |---|---|
 | **Current phase** | Phase 4: React frontend |
-| **Next step** | SignalR connection + message composer, then history with infinite scroll |
+| **Next step** | Markdown rendering + Shiki, then XSS check and component tests |
 | **Blockers** | None |
 | **Last session** | 2026-10-20: Phase 4 started (tokens, logo, auth cookie, API client, login/register) |
 
@@ -245,10 +245,10 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] API client with access token handling and automatic refresh
 - [x] Refresh token moved to an `HttpOnly` cookie (backend change, open decision closed)
 - [x] Pages: register, login, protected routes
-- [ ] Layout: sidebar with conversations, main chat area, message input (done except the input, which comes with SignalR)
+- [x] Layout: sidebar with conversations, main chat area, message input
 - [x] Create conversation and manage members UI
-- [ ] SignalR connection (`@microsoft/signalr`) with token, receive and send messages
-- [ ] History with infinite scroll upwards (cursor pagination)
+- [x] SignalR connection (`@microsoft/signalr`) with token, receive and send messages
+- [x] History with infinite scroll upwards (cursor pagination)
 - [ ] Markdown rendering with `react-markdown` + `rehype-sanitize`
 - [ ] Code blocks highlighted with Shiki (dark theme matching the background)
 - [ ] XSS check: messages with raw HTML/scripts are rendered harmless
@@ -365,7 +365,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
-| 2026-10-20 | 4 | Swagger UI at `/swagger` (chore, merged into develop and the phase branch). App shell: sidebar, conversation page, new conversation dialog, members panel (add, role, remove, leave), TanStack Query. Proxy chain checked end to end | SignalR + composer |
+| 2026-10-20 | 4 | Swagger UI at `/swagger` (chore, merged into develop and the phase branch). App shell: sidebar, conversation page, new conversation dialog, members panel (add, role, remove, leave), TanStack Query. Proxy chain checked end to end. SignalR provider, composer (optimistic send, retry), history with upward infinite scroll; two-client test through the proxy passes | Markdown + Shiki |
 | 2026-10-20 | 4 | Branch `phase-4-frontend`. Scaffold committed, design tokens, logo/favicon, Prettier. Refresh token moved to an HttpOnly cookie (backend + tests). API client (in-memory token, refresh serialized across tabs), auth context, login/register, route guards, Vite `/api` proxy | Run integration tests; Layout |
 | 2026-10-19 | — | Frontend folder decided: `frontend/` (not `web/`). Vite scaffold exists there, uncommitted. Local .NET runtime still 10.0.12 (user to update) | Phase 4: review scaffold |
 | 2026-10-19 | 3 | Realtime MVP: hub, send/receive, history with cursor, idempotent resend; Microsoft packages → 10.0.13 (CVE-2026-70159); code comments removed project-wide | Start Phase 4 |

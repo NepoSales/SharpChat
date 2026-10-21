@@ -57,13 +57,6 @@
   color: var(--color-text);
 }
 
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-4);
-}
-
-.empty,
 .state {
   margin: auto;
   padding: var(--space-8);

@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { MembersPanel } from '../conversations/MembersPanel'
 import { useConversation } from '../conversations/queries'
+import { Composer } from '../messages/Composer'
+import { MessageList } from '../messages/MessageList'
 import styles from './ConversationPage.module.css'
 
 export function ConversationPage() {
@@ -45,9 +47,12 @@ export function ConversationPage() {
             {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
           </button>
         </header>
-        <div className={styles.messages}>
-          <p className={styles.empty}>No messages yet.</p>
-        </div>
+        <MessageList key={conversationId} conversationId={conversationId} />
+        <Composer
+          key={`composer-${conversationId}`}
+          conversationId={conversationId}
+          name={data.name}
+        />
       </section>
       {showMembers && <MembersPanel conversation={data} onClose={() => setShowMembers(false)} />}
     </div>
