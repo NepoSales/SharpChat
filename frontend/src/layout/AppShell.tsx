@@ -1,6 +1,7 @@
 import { Outlet, useParams } from 'react-router'
 import { RealtimeProvider } from '../realtime/RealtimeProvider'
 import styles from './AppShell.module.css'
+import { ConnectionBanner } from './ConnectionBanner'
 import { Sidebar } from './Sidebar'
 
 export function AppShell() {
@@ -11,6 +12,7 @@ export function AppShell() {
       <div className={styles.shell} data-conversation-open={conversationId !== undefined}>
         <Sidebar className={styles.sidebar} />
         <main className={styles.main}>
+          <ConnectionBanner />
           <Outlet />
         </main>
       </div>

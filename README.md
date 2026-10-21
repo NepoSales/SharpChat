@@ -1,7 +1,7 @@
 # SharpChat
 
 Realtime chat for developers, built with .NET 10, SignalR, PostgreSQL, Redis and React.
-Project decisions are in [DECISIONS.md](DECISIONS.md) and progress is tracked in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Project decisions are in [DECISIONS.md](DECISIONS.md).
 
 ## Running
 

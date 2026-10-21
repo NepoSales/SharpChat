@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SharpChat.Application.Abstractions;
+using SharpChat.Application.Common;
 using SharpChat.Application.Conversations;
 using SharpChat.Domain.Common;
 using SharpChat.Domain.Conversations;
@@ -26,38 +27,14 @@ public sealed class MessageService(
             return ConversationErrors.NotFound;
         }
 
-        var recipients = members.Select(m => m.UserId).ToList();
-
-        var existing = await messages.GetByIdAsync(request.MessageId, cancellationToken);
-        if (existing is not null)
+        var stored = await StoreAsync(senderId, request, cancellationToken);
+        if (!stored.IsSuccess)
         {
-            if (!existing.IsSameSend(request.ConversationId, senderId))
-            {
-                return MessageErrors.IdConflict;
-            }
-
-            var retried = ToDto(existing, sender.UserName);
-            await notifier.MessageCreatedAsync(retried, recipients, cancellationToken);
-            return retried;
+            return stored.Error;
         }
 
-        var created = Message.Create(
-            request.MessageId,
-            request.ConversationId,
-            senderId,
-            request.Content,
-            TruncateToMicroseconds(time.GetUtcNow()),
-            options.Value.MaxMessageLength);
-        if (!created.IsSuccess)
-        {
-            return created.Error;
-        }
-
-        messages.Add(created.Value);
-        await messages.SaveChangesAsync(cancellationToken);
-
-        var dto = ToDto(created.Value, sender.UserName);
-        await notifier.MessageCreatedAsync(dto, recipients, cancellationToken);
+        var dto = ToDto(stored.Value, sender.UserName);
+        await notifier.MessageCreatedAsync(dto, members.Select(m => m.UserId).ToList(), cancellationToken);
         return dto;
     }
 
@@ -81,10 +58,65 @@ public sealed class MessageService(
         var page = newestFirst.Take(pageSize).Reverse().ToList();
 
         var nextCursor = newestFirst.Count > pageSize
-            ? new MessageCursor(page[0].SentAt, page[0].Id).Encode()
+            ? new MessageCursor(page[0].Seq).Encode()
             : null;
 
         return new MessagePage(page, nextCursor);
+    }
+
+    public async Task<Result<MessageChanges>> GetChangesAsync(
+        Guid conversationId, long after, int? limit, CancellationToken cancellationToken)
+    {
+        if (!await membership.IsMemberAsync(conversationId, currentUser.RequiredUserId(), cancellationToken))
+        {
+            return ConversationErrors.NotFound;
+        }
+
+        if (after < 0)
+        {
+            return MessageErrors.InvalidSeq;
+        }
+
+        var pageSize = Math.Clamp(limit ?? ChatOptions.MaxChangesPageSize, 1, ChatOptions.MaxChangesPageSize);
+        var changes = await messageQueries.GetChangesAfterAsync(conversationId, after, pageSize + 1, cancellationToken);
+
+        return new MessageChanges(changes.Take(pageSize).ToList(), changes.Count > pageSize);
+    }
+
+    private async Task<Result<Message>> StoreAsync(Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var write = await messages.BeginSequencedWriteAsync(request.ConversationId, cancellationToken);
+
+            var existing = await messages.GetByIdAsync(request.MessageId, cancellationToken);
+            if (existing is not null)
+            {
+                return existing.IsSameSend(request.ConversationId, senderId) ? existing : MessageErrors.IdConflict;
+            }
+
+            var created = Message.Create(
+                request.MessageId,
+                request.ConversationId,
+                senderId,
+                request.Content,
+                TruncateToMicroseconds(time.GetUtcNow()),
+                write.NextSeq,
+                options.Value.MaxMessageLength);
+            if (!created.IsSuccess)
+            {
+                return created.Error;
+            }
+
+            messages.Add(created.Value);
+            await messages.SaveChangesAsync(cancellationToken);
+            await write.CommitAsync(cancellationToken);
+            return created.Value;
+        }
+        catch (DuplicateKeyException)
+        {
+            return MessageErrors.IdConflict;
+        }
     }
 
     private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value) =>
@@ -97,6 +129,8 @@ public sealed class MessageService(
         senderUserName,
         message.Content,
         message.SentAt,
+        message.Seq,
+        message.ChangeSeq,
         message.ParentMessageId,
         message.EditedAt,
         message.DeletedAt);

@@ -15,7 +15,11 @@ public sealed record ConversationSummaryDto(
     ConversationRole MyRole,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    DateTimeOffset? LastMessageAt);
+    DateTimeOffset? LastMessageAt,
+    long LastSeq,
+    long LastDeliveredSeq,
+    long LastReadSeq,
+    int UnreadCount);
 
 public sealed record ConversationDto(
     Guid Id,
@@ -25,4 +29,10 @@ public sealed record ConversationDto(
     DateTimeOffset UpdatedAt,
     IReadOnlyList<MemberDto> Members);
 
-public sealed record MemberDto(Guid UserId, string UserName, ConversationRole Role, DateTimeOffset JoinedAt);
+public sealed record MemberDto(
+    Guid UserId,
+    string UserName,
+    ConversationRole Role,
+    DateTimeOffset JoinedAt,
+    long LastDeliveredSeq,
+    long LastReadSeq);

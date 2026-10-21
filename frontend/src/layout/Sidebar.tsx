@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button'
 import { formatShortTime } from '../components/ui/format'
 import { NewConversationDialog } from '../conversations/NewConversationDialog'
 import { useConversations } from '../conversations/queries'
+import { UNREAD_CAP } from '../messages/cache'
 import styles from './Sidebar.module.css'
 
 export function Sidebar({ className }: { className?: string }) {
@@ -56,7 +57,15 @@ export function Sidebar({ className }: { className?: string }) {
               {conversation.name}
             </span>
             <span className={styles.meta}>
-              {conversation.lastMessageAt ? formatShortTime(conversation.lastMessageAt) : ''}
+              {conversation.unreadCount > 0 ? (
+                <span className={styles.unread} aria-label={`${conversation.unreadCount} unread`}>
+                  {conversation.unreadCount >= UNREAD_CAP ? '99+' : conversation.unreadCount}
+                </span>
+              ) : conversation.lastMessageAt ? (
+                formatShortTime(conversation.lastMessageAt)
+              ) : (
+                ''
+              )}
             </span>
           </NavLink>
         ))}

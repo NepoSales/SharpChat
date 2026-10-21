@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { MembersPanel } from '../conversations/MembersPanel'
-import { useConversation } from '../conversations/queries'
+import { useConversation, useConversations } from '../conversations/queries'
 import { Composer } from '../messages/Composer'
 import { MessageList } from '../messages/MessageList'
 import styles from './ConversationPage.module.css'
@@ -10,6 +10,7 @@ import styles from './ConversationPage.module.css'
 export function ConversationPage() {
   const { conversationId } = useParams() as { conversationId: string }
   const conversation = useConversation(conversationId)
+  const summary = useConversations().data?.find((item) => item.id === conversationId)
   const [showMembers, setShowMembers] = useState(false)
 
   if (conversation.isPending) {
@@ -47,7 +48,12 @@ export function ConversationPage() {
             {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
           </button>
         </header>
-        <MessageList key={conversationId} conversationId={conversationId} />
+        <MessageList
+          key={conversationId}
+          conversationId={conversationId}
+          members={data.members}
+          unreadOnOpen={summary && { readSeq: summary.lastReadSeq, lastSeq: summary.lastSeq }}
+        />
         <Composer
           key={`composer-${conversationId}`}
           conversationId={conversationId}

@@ -10,6 +10,10 @@ export type ConversationSummary = {
   createdAt: string
   updatedAt: string
   lastMessageAt: string | null
+  lastSeq: number
+  lastDeliveredSeq: number
+  lastReadSeq: number
+  unreadCount: number
 }
 
 export type Member = {
@@ -17,6 +21,8 @@ export type Member = {
   userName: string
   role: ConversationRole
   joinedAt: string
+  lastDeliveredSeq: number
+  lastReadSeq: number
 }
 
 export type Conversation = {

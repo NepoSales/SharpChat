@@ -6,4 +6,7 @@ public interface IMessageQueries
 {
     Task<IReadOnlyList<MessageDto>> GetBeforeAsync(
         Guid conversationId, MessageCursor? before, int limit, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<MessageDto>> GetChangesAfterAsync(
+        Guid conversationId, long afterChangeSeq, int limit, CancellationToken cancellationToken);
 }

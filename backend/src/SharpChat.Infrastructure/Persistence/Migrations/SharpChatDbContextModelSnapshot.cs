@@ -17,7 +17,7 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -176,6 +176,12 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("LastDeliveredSeq")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("LastReadSeq")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -192,6 +198,9 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<long>("ChangeSeq")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -215,13 +224,20 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("SentAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("Seq")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ParentMessageId");
 
                     b.HasIndex("SenderId");
 
-                    b.HasIndex("ConversationId", "SentAt", "Id");
+                    b.HasIndex("ConversationId", "ChangeSeq")
+                        .IsUnique();
+
+                    b.HasIndex("ConversationId", "Seq")
+                        .IsUnique();
 
                     b.ToTable("Messages", (string)null);
                 });

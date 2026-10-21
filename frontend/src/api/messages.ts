@@ -7,6 +7,8 @@ export type Message = {
   senderUserName: string
   content: string
   sentAt: string
+  seq: number
+  changeSeq: number
   parentMessageId: string | null
   editedAt: string | null
   deletedAt: string | null
@@ -15,6 +17,22 @@ export type Message = {
 export type MessagePage = {
   items: Message[]
   nextCursor: string | null
+}
+
+export type MessageChanges = {
+  items: Message[]
+  hasMore: boolean
+}
+
+export type Receipt = {
+  conversationId: string
+  userId: string
+  lastDeliveredSeq: number
+  lastReadSeq: number
+}
+
+export function getChanges(conversationId: string, after: number, signal?: AbortSignal) {
+  return api<MessageChanges>(`/conversations/${conversationId}/changes?after=${after}`, { signal })
 }
 
 export function getHistory(conversationId: string, before: string | null, signal?: AbortSignal) {
