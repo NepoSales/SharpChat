@@ -66,6 +66,15 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
     public Task<MemberDto?> GetMemberAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken) =>
         Members(conversationId, userId).FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> ListContactIdsAsync(Guid userId, CancellationToken cancellationToken) =>
+        await db.ConversationMembers
+            .AsNoTracking()
+            .Where(m => m.UserId != userId
+                && db.ConversationMembers.Any(mine => mine.UserId == userId && mine.ConversationId == m.ConversationId))
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public async Task<ConversationRole?> GetRoleAsync(Guid conversationId, Guid userId, CancellationToken cancellationToken) =>
         await db.ConversationMembers
             .AsNoTracking()

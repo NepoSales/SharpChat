@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SharpChat.Api.Auth;
 using SharpChat.Api.Common;
+using SharpChat.Api.RateLimiting;
 using SharpChat.Application.Auth;
 using SharpChat.Application.Users;
 using SharpChat.Domain.Common;
@@ -10,6 +12,7 @@ namespace SharpChat.Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
+[EnableRateLimiting(RateLimitingSetup.AuthPolicy)]
 [Route("auth")]
 public sealed class AuthController(AuthService auth) : ControllerBase
 {
@@ -24,6 +27,7 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     }
 
     [HttpPost("login")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<SessionResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
