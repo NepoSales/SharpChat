@@ -23,7 +23,7 @@
 - **No lost or duplicated messages.** Clients generate message ids, so retries are idempotent. Every message is stored before it is broadcast. Each conversation has a gap-free sequence assigned under a row lock, so after a reconnect the client asks for "everything after N" and catches up, edits and deletions included.
 - **Membership enforced on the server.** Every send, read and realtime event is checked against the database. Non-members get `404`, so they can't even tell a conversation exists. Markdown is sanitized and the frontend runs under a strict Content-Security-Policy.
 - **Scales out.** Two API instances run behind nginx without sticky sessions. The SignalR Redis backplane delivers across instances, and presence (Lua scripts) and rate limits live in Redis, so they hold no matter which instance a client lands on.
-- **Observable.** OpenTelemetry traces, metrics and logs flow through a Collector into Prometheus, Loki and Jaeger, with three provisioned Grafana dashboards. Logs link to their traces. Adding it surfaced real bugs, a presence leak among them, now fixed and recorded in the [decision log](DECISIONS.md#11-decision-log).
+- **Observable.** OpenTelemetry traces, metrics and logs flow through a Collector into Prometheus, Loki and Jaeger, with three provisioned Grafana dashboards. Logs link to their traces. Adding it surfaced real bugs, a presence leak among them, now fixed and covered by tests.
 - **Tested against real infrastructure.** Integration tests use Testcontainers (PostgreSQL, Redis), real SignalR clients and a second API instance. CI runs the backend, frontend and Docker builds on every pull request.
 
 ## Features
@@ -75,8 +75,6 @@ sequenceDiagram
     R-->>O: MessageReceived
     A-->>C: ack (a retry with the same id gets the same ack)
 ```
-
-The reasoning behind each choice (and what was rejected) is in [DECISIONS.md](DECISIONS.md).
 
 ## Getting started
 
@@ -156,14 +154,12 @@ npm run test:coverage && npm run lint && npm run format:check # what CI runs on 
 ├── frontend/                          # React + TypeScript (Vite), served by nginx
 ├── observability/                     # Collector, Prometheus, Loki and Grafana config + dashboards
 ├── docs/API.md                        # REST, SignalR and rate limit reference
-├── DECISIONS.md                       # architecture decisions and decision log
 └── docker-compose.yml
 ```
 
 ## Documentation
 
 - [docs/API.md](docs/API.md): REST endpoints, SignalR methods and events, rate limits, Swagger.
-- [DECISIONS.md](DECISIONS.md): goals, architecture, trade-offs and a dated log of every decision.
 
 ## License
 

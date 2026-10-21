@@ -1,6 +1,6 @@
 # SharpChat frontend
 
-React + TypeScript + Vite client for SharpChat. See the root `README.md` and `DECISIONS.md` for the project overview.
+React + TypeScript + Vite client for SharpChat. See the root `README.md` for the project overview.
 
 ## Commands
 
