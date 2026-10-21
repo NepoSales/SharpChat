@@ -17,6 +17,15 @@ docker compose up --build
 | API | http://localhost:8080 |
 | Liveness | http://localhost:8080/health |
 | Readiness (Postgres + Redis) | http://localhost:8080/health/ready |
+| Swagger UI (Development only) | http://localhost:8080/swagger |
+
+### Trying the API in Swagger
+
+1. `POST /auth/register`, then `POST /auth/login`, and copy `accessToken` from the response.
+2. Click **Authorize** and paste the token (without the `Bearer` prefix). It stays saved across page reloads.
+3. Call any protected endpoint, e.g. `GET /users/me`. The access token lasts 15 minutes; log in again (or call `POST /auth/refresh`) for a new one.
+
+To look at the data directly: `docker compose exec postgres psql -U sharpchat -c 'select "Id", "UserName", "Email" from "Users";'`
 
 ## Development
 
