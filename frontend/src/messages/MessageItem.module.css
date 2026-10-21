@@ -18,21 +18,14 @@
 
 .row {
   display: grid;
-  grid-template-columns: 11.5rem minmax(0, 1fr);
+  grid-template-columns: 3.75rem 6rem minmax(0, 1fr);
+  grid-template-areas: 'time prompt main';
   column-gap: var(--space-2);
   align-items: baseline;
 }
 
-.gutter {
-  display: flex;
-  justify-content: flex-end;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
 .time {
-  flex-shrink: 0;
+  grid-area: time;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
@@ -48,7 +41,9 @@
 }
 
 .prompt {
+  grid-area: prompt;
   display: flex;
+  justify-content: flex-end;
   gap: var(--space-1);
   min-width: 0;
   font-family: var(--font-mono);
@@ -100,20 +95,25 @@
 }
 
 .main {
+  grid-area: main;
   min-width: 0;
 }
 
 @container (max-width: 480px) {
   .row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'prompt time'
+      'main main';
     row-gap: 2px;
   }
 
-  .gutter {
+  .prompt {
     justify-content: flex-start;
   }
 
-  .message[data-continued='true'] .gutter {
+  .message[data-continued='true'] .time,
+  .message[data-continued='true'] .prompt {
     display: none;
   }
 }
