@@ -1,6 +1,18 @@
 import { QueryClient, type InfiniteData } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { lastChangeSeq, messageKeys, upsertMessage, type ChatMessage, type ChatPage } from './cache'
+import type { Conversation, ConversationSummary } from '../api/conversations'
+import { conversationKeys } from '../conversations/queries'
+import {
+  applyReceipt,
+  lastChangeSeq,
+  markReadLocally,
+  messageKeys,
+  touchConversation,
+  UNREAD_CAP,
+  upsertMessage,
+  type ChatMessage,
+  type ChatPage,
+} from './cache'
 
 const conversationId = 'c1'
 
@@ -134,5 +146,114 @@ describe('message cache', () => {
     upsertMessage(queryClient, message('ancient', 3, { changeSeq: 41 }))
 
     expect(ids()).toEqual(['ancient:3', 'recent:40'])
+  })
+})
+
+describe('conversation list cache', () => {
+  const me = 'me'
+  let queryClient: QueryClient
+
+  function summary(id: string, extra: Partial<ConversationSummary> = {}): ConversationSummary {
+    return {
+      id,
+      name: id,
+      memberCount: 2,
+      myRole: 'Member',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      lastMessageAt: null,
+      lastSeq: 5,
+      lastDeliveredSeq: 5,
+      lastReadSeq: 5,
+      unreadCount: 0,
+      ...extra,
+    }
+  }
+
+  function seedList(...items: ConversationSummary[]) {
+    queryClient.setQueryData(conversationKeys.all, items)
+  }
+
+  function list() {
+    return queryClient.getQueryData<ConversationSummary[]>(conversationKeys.all)!
+  }
+
+  beforeEach(() => {
+    queryClient = new QueryClient()
+  })
+
+  it('moves the conversation to the top and counts messages from others as unread', () => {
+    seedList(summary('other'), summary(conversationId))
+
+    touchConversation(queryClient, message('m6', 6, { sentAt: '2026-01-02T00:00:00Z' }), me)
+
+    expect(list().map((c) => c.id)).toEqual([conversationId, 'other'])
+    expect(list()[0]).toMatchObject({
+      lastSeq: 6,
+      unreadCount: 1,
+      lastMessageAt: '2026-01-02T00:00:00Z',
+    })
+  })
+
+  it('does not count my own messages, thread replies or replays as unread', () => {
+    seedList(summary(conversationId))
+
+    touchConversation(queryClient, message('mine', 6, { senderId: me }), me)
+    touchConversation(queryClient, message('reply', 7, { parentMessageId: 'mine' }), me)
+    touchConversation(queryClient, message('old', 4), me)
+
+    expect(list()[0]).toMatchObject({ lastSeq: 7, unreadCount: 0 })
+  })
+
+  it('caps the unread counter', () => {
+    seedList(summary(conversationId, { unreadCount: UNREAD_CAP }))
+
+    touchConversation(queryClient, message('m6', 6), me)
+
+    expect(list()[0].unreadCount).toBe(UNREAD_CAP)
+  })
+
+  it('marks a conversation read only when the read position reaches its last message', () => {
+    seedList(summary(conversationId, { lastSeq: 9, unreadCount: 4 }))
+
+    markReadLocally(queryClient, conversationId, 7)
+    expect(list()[0]).toMatchObject({ lastReadSeq: 5, unreadCount: 4 })
+
+    markReadLocally(queryClient, conversationId, 9)
+    expect(list()[0]).toMatchObject({ lastReadSeq: 9, lastDeliveredSeq: 9, unreadCount: 0 })
+  })
+
+  it('only moves member receipt positions forward', () => {
+    const detail: Conversation = {
+      id: conversationId,
+      name: 'team',
+      createdBy: me,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      members: [
+        {
+          userId: 'bob',
+          userName: 'bob',
+          role: 'Member',
+          joinedAt: '2026-01-01T00:00:00Z',
+          lastDeliveredSeq: 8,
+          lastReadSeq: 6,
+        },
+      ],
+    }
+    queryClient.setQueryData(conversationKeys.detail(conversationId), detail)
+
+    applyReceipt(
+      queryClient,
+      { conversationId, userId: 'bob', lastDeliveredSeq: 7, lastReadSeq: 7 },
+      me,
+    )
+
+    expect(
+      queryClient.getQueryData<Conversation>(conversationKeys.detail(conversationId))!.members[0],
+    ).toMatchObject({
+      lastDeliveredSeq: 8,
+      lastReadSeq: 7,
+    })
   })
 })
