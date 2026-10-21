@@ -198,13 +198,13 @@ Tests are written along each phase, not only at the end.
 |---|---|
 | `main` | Stable releases only. The first merge into `main` is the first stable version of the app |
 | `develop` | Integration branch. Every finished phase is merged here |
-| Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge. Non-phase work uses `chore-<name>` |
-| Merges | `--no-ff`, so each phase stays visible as a group in the history |
+| Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge (on GitHub). Non-phase work uses `chore-<name>` |
+| Merges | Done **only by me, on GitHub** (never locally). Claude tells me when a branch is ready to merge into `develop`. Merge commits keep each phase visible as a group in the history |
 | Commits | English, imperative summary line, a body listing what changed. A phase is merged only when its tests pass |
 | Push | Done **only by me**. Claude never pushes; it tells me when a push is recommended, at the strategic points below |
 
 **Strategic push points** (Claude notifies me, I push):
-1. **Phase merged into `develop`**: push `develop`. Chores merged between phases go out with the next push.
+1. **Phase or chore finished**: push the branch; Claude says it is ready to merge into `develop` on GitHub. Before starting the next branch, I pull `develop`.
 2. **End of a session with a phase in progress**: push the phase branch as a backup, so unfinished work is never only local.
 3. **Before a risky change** (large refactor, migration rework): push the current branch first, so there is a known-good point on GitHub.
 
@@ -264,3 +264,4 @@ New ideas go here before becoming decisions.
 | 2026-10-20 | Raw HTML in messages is shown as literal text; markdown images are rendered as links | Developers talk about HTML, so tags shouldn't silently disappear; images as links means a message can't load remote content (tracking pixels) |
 | 2026-10-20 | Shiki output converted hast → JSX (no `innerHTML`), JS regex engine, loaded lazily on the first code block | No HTML string is ever injected; no WebAssembly download; the main bundle stays small |
 | 2026-10-20 | Frontend served by nginx in Compose (port 3000) with a strict Content-Security-Policy (`'self'` only, no inline scripts or styles) | Defense in depth: even if sanitization failed, injected scripts couldn't run or call other origins |
+| 2026-10-20 | Merges into `develop`/`main` happen only on GitHub, done by me; Claude never merges locally and tells me when a branch is ready | Merges stay visible and reviewable on GitHub, and nothing reaches `develop` without my action |

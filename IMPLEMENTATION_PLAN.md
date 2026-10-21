@@ -13,6 +13,7 @@ Last update: 2026-10-20
 - **End of a phase**:
   1. Check that every task and the "Done when" criteria are ticked.
   2. Tick the phase in the [Overview](#overview).
+   (The merge into `develop` is done by the user on GitHub.)
   3. Fill in the phase **Summary** (template below).
   4. Update [Current status](#current-status).
   5. If a decision changed, update `DECISIONS.md` (section 11, decision log) too.
@@ -21,9 +22,10 @@ Last update: 2026-10-20
 ### Git workflow
 
 - `main`: only stable releases. The first merge into `main` is the first stable version of the app.
-- `develop`: integration branch. Every finished phase is merged here with `--no-ff`.
+- `develop`: integration branch. Every finished phase is merged here.
+- Merges are done only by the user, on GitHub. Claude never merges locally; it says when a branch is ready to merge.
 - `phase-N-<name>` (e.g. `phase-1-auth`): one branch per phase, created from `develop` and deleted after the merge.
-- Pushes are done only by the user. Claude notifies at strategic points: after a phase is merged into `develop`, at the end of a session with a phase in progress, and before risky changes.
+- Pushes are done only by the user. Claude notifies at strategic points: when a phase or chore branch is finished (push + merge on GitHub), at the end of a session with a phase in progress, and before risky changes.
 - Full rules: `DECISIONS.md`, section 9 (Git workflow).
 
 ### Paths
