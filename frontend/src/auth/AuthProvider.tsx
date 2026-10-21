@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type ReactNode } from 'react'
 import * as authApi from '../api/auth'
 import { onSessionChange, refreshSession } from '../api/session'
@@ -6,6 +7,7 @@ import { AuthContext, type AuthState } from './AuthContext'
 const anonymous: AuthState = { status: 'anonymous', user: null }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [state, setState] = useState<AuthState>({ status: 'loading', user: null })
 
   useEffect(() => {
@@ -23,14 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
     const unsubscribe = onSessionChange((signedIn) => {
-      if (!signedIn) setState(anonymous)
+      if (!signedIn) {
+        queryClient.clear()
+        setState(anonymous)
+      }
     })
 
     return () => {
       controller.abort()
       unsubscribe()
     }
-  }, [])
+  }, [queryClient])
 
   async function login(input: authApi.LoginInput) {
     await authApi.login(input)
@@ -45,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     await authApi.logout()
+    queryClient.clear()
     setState(anonymous)
   }
 
