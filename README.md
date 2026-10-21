@@ -14,8 +14,8 @@ docker compose up --build
 
 | Service | Address |
 |---|---|
-| Web app | http://localhost:3000 |
-| API | http://localhost:8080 |
+| Web app (nginx, load balances `/api` over both API instances) | http://localhost:3000 |
+| API instance `api-1` (direct, for Swagger and debugging) | http://localhost:8080 |
 | Liveness | http://localhost:8080/health |
 | Readiness (Postgres + Redis) | http://localhost:8080/health/ready |
 | Swagger UI (Development only) | http://localhost:8080/swagger |
@@ -86,12 +86,33 @@ Hub: `/hubs/chat`. Authenticate with the access token (`accessTokenFactory` in t
 | Client → server | `EditMessage` | `{ messageId, content }`. Author only |
 | Client → server | `DeleteMessage` | `{ messageId }`. Author, admin or owner; the content is erased (soft delete) |
 | Client → server | `MarkDelivered` / `MarkRead` | `{ conversationId, seq }`. Cumulative: "received / read everything up to `seq`" |
+| Client → server | `Typing` | `{ conversationId, parentMessageId? }`. Fire and forget; send at most every few seconds |
+| Client → server | `GetOnlineMembers` | `conversationId`. Returns the ids of the members who are online |
 | Server → client | `MessageReceived` | The message, sent to every connection of every member (the sender included) |
 | Server → client | `MessageUpdated` | A new version of a message: edited, deleted, or a parent whose reply count changed |
+| Server → client | `PresenceChanged` | `{ userId, isOnline }`, sent to users who share a conversation with that user |
+| Server → client | `UserTyping` | `{ conversationId, parentMessageId, userId, userName }`, sent to the other members |
 | Server → client | `ReceiptUpdated` | `{ conversationId, userId, lastDeliveredSeq, lastReadSeq }`, sent to the authors of the affected messages and to the reader |
 
 Every message carries `seq` (its position in the conversation) and `changeSeq` (bumped by every change). A client that remembers the highest `changeSeq` it has seen can always catch up with `/changes?after=`.
 
 The refresh token never appears in a response body: it is the `__Secure-sharpchat-refresh` cookie (`HttpOnly`, `Secure`, `SameSite=Strict`, path `/auth`).
+
+### Rate limits
+
+Counters live in Redis, so they hold across instances. Defaults (section `RateLimiting` in configuration):
+
+| Scope | Limit | Over the limit |
+|---|---|---|
+| `/auth/*` per client IP | 10 per minute | `429` with `Retry-After`, code `rate_limited` |
+| Every other endpoint, per user (or IP when anonymous) | 300 per minute | `429` with `Retry-After`, code `rate_limited` |
+| `SendMessage`, `EditMessage`, `DeleteMessage` per user | 30 per 10 seconds | hub error `rate_limited` |
+| `Typing` per user | 2 per 4 seconds | dropped silently |
+
+Health checks are never limited.
+
+### Scaling
+
+Docker Compose runs two API instances (`api-1`, `api-2`) behind nginx (`least_conn`). SignalR uses the Redis backplane, so a message sent through one instance reaches clients on the other. Clients connect with WebSockets only (`skipNegotiation`), so no sticky sessions are needed. In Development every response carries `X-SharpChat-Instance` with the instance that answered.
 
 Errors use [ProblemDetails](https://www.rfc-editor.org/rfc/rfc9457) with a machine-readable `code` (e.g. `email_taken`, `invalid_credentials`).

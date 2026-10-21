@@ -12,6 +12,9 @@ const realtime: RealtimeContextValue = {
   editMessage: vi.fn(async () => null),
   deleteMessage: vi.fn(async () => null),
   markRead: vi.fn(),
+  on: vi.fn(() => () => undefined),
+  getOnlineMembers: vi.fn(async () => []),
+  sendTyping: vi.fn(),
 }
 
 function wrapper({ children }: { children: ReactNode }) {

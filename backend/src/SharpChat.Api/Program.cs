@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using SharpChat.Api.Common;
 using SharpChat.Api.Hubs;
 using SharpChat.Api.OpenApi;
+using SharpChat.Api.RateLimiting;
 using SharpChat.Api.Services;
 using SharpChat.Application;
 using SharpChat.Application.Abstractions;
@@ -15,8 +17,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddSignalR()
-    .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddApiDocumentation();
 builder.Services.AddProblemDetails();
 
@@ -25,19 +25,22 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
-builder.Services.AddScoped<IChatNotifier, SignalRChatNotifier>();
-builder.Services.AddHubAuthentication();
+builder.Services.AddRealtime(builder.Configuration);
+builder.Services.AddSharpChatRateLimiting();
+builder.Services.AddReverseProxySupport();
 
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseInstanceHeader(app.Configuration["InstanceName"] ?? Environment.MachineName);
     app.MapApiDocumentation();
 
     await using var scope = app.Services.CreateAsyncScope();
@@ -51,14 +54,15 @@ else
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHub<ChatHub>(ChatHub.Path);
 
-app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous().DisableRateLimiting();
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains(HealthCheckTags.Ready),
-}).AllowAnonymous();
+}).AllowAnonymous().DisableRateLimiting();
 
 await app.RunAsync();

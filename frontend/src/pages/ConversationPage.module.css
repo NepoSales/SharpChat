@@ -51,6 +51,10 @@
   cursor: pointer;
 }
 
+.online {
+  color: var(--color-success);
+}
+
 .membersButton:hover,
 .membersButton[aria-expanded='true'] {
   background: var(--color-elevated);

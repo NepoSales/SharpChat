@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
@@ -9,6 +9,8 @@ import { lastEditable } from '../messages/lastEditable'
 import { MessageList } from '../messages/MessageList'
 import { useMessages } from '../messages/queries'
 import { ThreadPanel } from '../messages/ThreadPanel'
+import { TypingIndicator } from '../messages/TypingIndicator'
+import { useActivity } from '../realtime/useActivity'
 import styles from './ConversationPage.module.css'
 
 export function ConversationPage() {
@@ -17,11 +19,17 @@ export function ConversationPage() {
   const summary = useConversations().data?.find((item) => item.id === conversationId)
   const history = useMessages(conversationId)
   const { user } = useAuth()
+  const { isOnline, loadPresence } = useActivity()
   const [searchParams, setSearchParams] = useSearchParams()
   const threadId = searchParams.get('thread')
   const [showMembers, setShowMembers] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [openedThreads, setOpenedThreads] = useState<ReadonlySet<string>>(new Set())
+
+  const loadConversationPresence = useEffectEvent(() => loadPresence(conversationId))
+  useEffect(() => {
+    loadConversationPresence()
+  }, [conversationId])
 
   function openThread(messageId: string) {
     setShowMembers(false)
@@ -54,6 +62,7 @@ export function ConversationPage() {
 
   const { data } = conversation
   const mainMessages = history.data?.pages.flatMap((page) => page.items)
+  const onlineCount = data.members.filter((member) => isOnline(member.userId)).length
 
   return (
     <div className={styles.page}>
@@ -72,6 +81,7 @@ export function ConversationPage() {
             aria-expanded={showMembers}
           >
             {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
+            <span className={styles.online}> · {onlineCount} online</span>
           </button>
         </header>
         <MessageList
@@ -87,6 +97,7 @@ export function ConversationPage() {
           emptyText="No messages yet. Say hi!"
           startText="This is the start of the conversation."
         />
+        <TypingIndicator conversationId={conversationId} parentMessageId={null} />
         <Composer
           key={`composer-${conversationId}`}
           conversationId={conversationId}

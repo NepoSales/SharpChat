@@ -5,6 +5,7 @@ import { Composer } from './Composer'
 import { MessageItem } from './MessageItem'
 import { lastEditable } from './lastEditable'
 import { MessageList } from './MessageList'
+import { TypingIndicator } from './TypingIndicator'
 import { useReplies, useThreadParent } from './queries'
 import styles from './ThreadPanel.module.css'
 
@@ -61,6 +62,9 @@ export function ThreadPanel({ conversationId, parentId, members, onClose }: Prop
               </div>
             }
           />
+          {parent.deletedAt === null && (
+            <TypingIndicator conversationId={conversationId} parentMessageId={parentId} />
+          )}
           {parent.deletedAt === null && (
             <Composer
               key={parentId}

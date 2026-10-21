@@ -10,12 +10,14 @@ using Microsoft.IdentityModel.Tokens;
 using SharpChat.Application.Abstractions;
 using SharpChat.Application.Auth;
 using SharpChat.Application.Conversations;
+using SharpChat.Application.Presence;
 using SharpChat.Infrastructure.Authentication;
 using SharpChat.Infrastructure.HealthChecks;
 using SharpChat.Infrastructure.Identity;
 using SharpChat.Infrastructure.Persistence;
 using SharpChat.Infrastructure.Persistence.Queries;
 using SharpChat.Infrastructure.Persistence.Repositories;
+using SharpChat.Infrastructure.Presence;
 using StackExchange.Redis;
 
 namespace SharpChat.Infrastructure;
@@ -46,6 +48,11 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<PresenceOptions>()
+            .BindConfiguration(PresenceOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
@@ -53,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageQueries, MessageQueries>();
         services.AddScoped<IReceiptStore, ReceiptStore>();
+        services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;

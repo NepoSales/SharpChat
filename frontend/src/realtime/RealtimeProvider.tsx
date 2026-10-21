@@ -21,7 +21,12 @@ import {
   upsertMessage,
   type ChatMessage,
 } from '../messages/cache'
-import { RealtimeContext, type ConnectionState } from './RealtimeContext'
+import {
+  RealtimeContext,
+  type ConnectionState,
+  type RealtimeEvent,
+  type RealtimeEventMap,
+} from './RealtimeContext'
 import { retryDelay } from './retry'
 
 type HubResponse<T> =
@@ -44,6 +49,22 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const sentReceiptsRef = useRef(new Map<string, number>())
   const receiptTimerRef = useRef<number | null>(null)
   const positionsRef = useRef(new Map<string, number>())
+  const listenersRef = useRef(new Map<RealtimeEvent, Set<(payload: never) => void>>())
+
+  function emit<E extends RealtimeEvent>(event: E, payload: RealtimeEventMap[E]) {
+    listenersRef.current
+      .get(event)
+      ?.forEach((listener) => (listener as (payload: RealtimeEventMap[E]) => void)(payload))
+  }
+
+  function on<E extends RealtimeEvent>(event: E, listener: (payload: RealtimeEventMap[E]) => void) {
+    const listeners = listenersRef.current.get(event) ?? new Set()
+    listeners.add(listener)
+    listenersRef.current.set(event, listeners)
+    return () => {
+      listeners.delete(listener)
+    }
+  }
   const [state, setState] = useState<ConnectionState>('connecting')
 
   async function deliver(message: ChatMessage) {
@@ -151,6 +172,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }
 
   function resync() {
+    emit('connected', undefined)
     cachedConversationIds(queryClient).forEach((id) => void syncConversation(id))
     void queryClient.invalidateQueries({ queryKey: conversationKeys.all })
     flushOutbox()
@@ -162,6 +184,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     upsertMessage(queryClient, message)
     advancePosition(message)
     if (isNew) {
+      emit('messageReceived', message)
       touchConversation(queryClient, message, userId)
       if (message.senderId !== userId) {
         scheduleReceipt('MarkDelivered', message.conversationId, message.seq)
@@ -173,12 +196,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }
 
   const handlers = useRef<{
+    emit: typeof emit
     applyChange: (message: Message, isNew: boolean) => void
     resync: () => void
     applyReceipt: (receipt: Receipt) => void
   } | null>(null)
   useEffect(() => {
     handlers.current = {
+      emit,
       applyChange,
       resync,
       applyReceipt: (receipt) => applyReceipt(queryClient, receipt, userId),
@@ -207,6 +232,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     )
     connection.on('MessageUpdated', (message: Message) =>
       handlers.current?.applyChange(message, false),
+    )
+    connection.on('PresenceChanged', (presence: RealtimeEventMap['presenceChanged']) =>
+      handlers.current?.emit('presenceChanged', presence),
+    )
+    connection.on('UserTyping', (typing: RealtimeEventMap['userTyping']) =>
+      handlers.current?.emit('userTyping', typing),
     )
     connection.on('ReceiptUpdated', (receipt: Receipt) => handlers.current?.applyReceipt(receipt))
     connection.onreconnecting(() => setState('reconnecting'))
@@ -314,6 +345,26 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     return changeMessage('DeleteMessage', { messageId: message.id })
   }
 
+  async function getOnlineMembers(conversationId: string) {
+    const connection = connectionRef.current
+    if (!connection || connection.state !== HubConnectionState.Connected) return null
+    try {
+      const response = await connection.invoke<HubResponse<string[]>>(
+        'GetOnlineMembers',
+        conversationId,
+      )
+      return response.data
+    } catch {
+      return null
+    }
+  }
+
+  function sendTyping(conversationId: string, parentMessageId: string | null) {
+    const connection = connectionRef.current
+    if (!connection || connection.state !== HubConnectionState.Connected) return
+    void connection.send('Typing', { conversationId, parentMessageId }).catch(() => undefined)
+  }
+
   function markRead(conversationId: string, seq: number) {
     if (seq <= 0) return
     markReadLocally(queryClient, conversationId, seq)
@@ -322,7 +373,17 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   return (
     <RealtimeContext
-      value={{ state, sendMessage, retryMessage, editMessage, deleteMessage, markRead }}
+      value={{
+        state,
+        sendMessage,
+        retryMessage,
+        editMessage,
+        deleteMessage,
+        markRead,
+        on,
+        getOnlineMembers,
+        sendTyping,
+      }}
     >
       {children}
     </RealtimeContext>

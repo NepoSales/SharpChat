@@ -1,0 +1,14 @@
+.dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--color-text-secondary);
+}
+
+.dot[data-online='true'] {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}

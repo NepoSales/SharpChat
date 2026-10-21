@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useActivity } from '../realtime/useActivity'
 import { useRealtime } from '../realtime/useRealtime'
 import styles from './Composer.module.css'
 
@@ -15,6 +16,7 @@ type Props = {
 
 export function Composer({ conversationId, label, parentMessageId, onEditLast, autoFocus }: Props) {
   const { sendMessage } = useRealtime()
+  const { notifyTyping } = useActivity()
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const canSend = content.trim().length > 0 && content.length <= MAX_LENGTH
@@ -60,6 +62,7 @@ export function Composer({ conversationId, label, parentMessageId, onEditLast, a
         autoFocus={autoFocus}
         onChange={(event) => {
           setContent(event.target.value)
+          if (event.target.value.trim()) notifyTyping(conversationId, parentMessageId ?? null)
           resize()
         }}
         onKeyDown={handleKeyDown}

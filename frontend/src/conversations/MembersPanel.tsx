@@ -5,6 +5,8 @@ import type { Conversation, ConversationRole, Member } from '../api/conversation
 import { errorMessage } from '../api/errors'
 import { useAuth } from '../auth/useAuth'
 import { Button } from '../components/ui/Button'
+import { OnlineDot } from '../components/ui/OnlineDot'
+import { useActivity } from '../realtime/useActivity'
 import { TextField } from '../components/ui/TextField'
 import formStyles from './forms.module.css'
 import styles from './MembersPanel.module.css'
@@ -18,6 +20,7 @@ type Props = {
 
 export function MembersPanel({ conversation, onClose }: Props) {
   const { user } = useAuth()
+  const { isOnline } = useActivity()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const addMember = useAddMember(conversation.id)
@@ -90,7 +93,7 @@ export function MembersPanel({ conversation, onClose }: Props) {
         {conversation.members.map((member) => (
           <li key={member.userId} className={styles.member}>
             <span className={styles.userName}>
-              @{member.userName}
+              <OnlineDot online={isOnline(member.userId)} /> @{member.userName}
               {member.userId === user?.id && <span className={styles.you}> (you)</span>}
             </span>
             <span className={styles.controls}>

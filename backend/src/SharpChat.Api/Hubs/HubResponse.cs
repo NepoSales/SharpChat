@@ -11,5 +11,7 @@ public sealed record HubResponse<T>(T? Data, HubError? Error)
 
     public static HubResponse<T> Fail(Error error) =>
         new(default, new HubError(error.Code, error.Message, error.ValidationErrors));
+
+    public static HubResponse<T> Fail(string code, string message) => new(default, new HubError(code, message, null));
 #pragma warning restore CA1000
 }

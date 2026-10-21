@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using SharpChat.Api.Hubs;
 using SharpChat.Application.Messages;
+using SharpChat.Application.Presence;
 using SharpChat.IntegrationTests.Infrastructure;
 
 namespace SharpChat.IntegrationTests.Messaging;
@@ -18,6 +19,8 @@ public sealed class ChatClient : IAsyncDisposable
     private readonly Channel<MessageDto> _received = Channel.CreateUnbounded<MessageDto>();
     private readonly Channel<ReceiptDto> _receipts = Channel.CreateUnbounded<ReceiptDto>();
     private readonly Channel<MessageDto> _updates = Channel.CreateUnbounded<MessageDto>();
+    private readonly Channel<PresenceDto> _presence = Channel.CreateUnbounded<PresenceDto>();
+    private readonly Channel<TypingDto> _typing = Channel.CreateUnbounded<TypingDto>();
 
     private ChatClient(HubConnection connection)
     {
@@ -25,6 +28,8 @@ public sealed class ChatClient : IAsyncDisposable
         _connection.On<MessageDto>(nameof(IChatClient.MessageReceived), message => _received.Writer.TryWrite(message));
         _connection.On<ReceiptDto>(nameof(IChatClient.ReceiptUpdated), receipt => _receipts.Writer.TryWrite(receipt));
         _connection.On<MessageDto>(nameof(IChatClient.MessageUpdated), message => _updates.Writer.TryWrite(message));
+        _connection.On<PresenceDto>(nameof(IChatClient.PresenceChanged), presence => _presence.Writer.TryWrite(presence));
+        _connection.On<TypingDto>(nameof(IChatClient.UserTyping), typing => _typing.Writer.TryWrite(typing));
     }
 
     public static async Task<ChatClient> ConnectAsync<T>(WebApplicationFactory<T> factory, string? accessToken)
@@ -75,6 +80,36 @@ public sealed class ChatClient : IAsyncDisposable
 
     public Task<HubResponse<MessageDto>> DeleteAsync(Guid messageId) =>
         _connection.InvokeAsync<HubResponse<MessageDto>>(nameof(ChatHub.DeleteMessage), new DeleteMessageRequest(messageId));
+
+    public Task TypingAsync(Guid conversationId, Guid? parentMessageId = null) =>
+        _connection.InvokeAsync(nameof(ChatHub.Typing), new TypingRequest(conversationId, parentMessageId));
+
+    public Task<HubResponse<IReadOnlyList<Guid>>> GetOnlineMembersAsync(Guid conversationId) =>
+        _connection.InvokeAsync<HubResponse<IReadOnlyList<Guid>>>(nameof(ChatHub.GetOnlineMembers), conversationId);
+
+    public async Task<PresenceDto> NextPresenceAsync()
+    {
+        using var timeout = new CancellationTokenSource(ReceiveTimeout);
+        return await _presence.Reader.ReadAsync(timeout.Token);
+    }
+
+    public async Task AssertNoPresenceAsync(TimeSpan wait)
+    {
+        await Task.Delay(wait);
+        Assert.False(_presence.Reader.TryRead(out var unexpected), $"Unexpected presence of {unexpected?.UserId}");
+    }
+
+    public async Task<TypingDto> NextTypingAsync()
+    {
+        using var timeout = new CancellationTokenSource(ReceiveTimeout);
+        return await _typing.Reader.ReadAsync(timeout.Token);
+    }
+
+    public async Task AssertNoTypingAsync(TimeSpan wait)
+    {
+        await Task.Delay(wait);
+        Assert.False(_typing.Reader.TryRead(out var unexpected), $"Unexpected typing from {unexpected?.UserName}");
+    }
 
     public async Task<MessageDto> NextUpdateAsync()
     {
