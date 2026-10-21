@@ -47,10 +47,10 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 
 | | |
 |---|---|
-| **Current phase** | Phase 4: React frontend |
-| **Next step** | User checks the full flow in the browser at http://localhost:3000 (incl. no CSP errors in the console); then close Phase 4 (summary, merge into develop) |
+| **Current phase** | Phase 5: Reliability |
+| **Next step** | Design the reconnect sync (messages after the last received one) and the delivered/read model |
 | **Blockers** | None |
-| **Last session** | 2026-10-20: Phase 4 started (tokens, logo, auth cookie, API client, login/register) |
+| **Last session** | 2026-10-20: Phase 4 finished (browser app, cookie auth, Swagger, Compose frontend behind nginx) |
 
 ---
 
@@ -60,7 +60,7 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] **Phase 1**: Authentication (register, login, JWT + refresh token)
 - [x] **Phase 2**: Conversations and members (REST)
 - [x] **Phase 3**: Realtime messaging, persistence, history (**MVP**)
-- [ ] **Phase 4**: React frontend (dark theme, markdown, code blocks)
+- [x] **Phase 4**: React frontend (dark theme, markdown, code blocks)
 - [ ] **Phase 5**: Reliability (idempotency, reconnect sync, delivered/read)
 - [ ] **Phase 6**: Threads, editing and deletion
 - [ ] **Phase 7**: Scale (Redis backplane, presence, typing, rate limiting)
@@ -256,10 +256,29 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 - [x] Component tests for the critical parts (message rendering, sanitization)
 
 ### Done when
-- [ ] Full flow in the browser: register, log in, create a group, chat with markdown and highlighted code
+- [x] Full flow in the browser: register, log in, create a group, chat with markdown and highlighted code
 - [x] `docker compose up` brings up the frontend too
 
-**Summary**: _not finished yet_
+**Summary** (finished 2026-10-20)
+- **Built**: the browser app. Register, log in (the session survives reloads), create conversations, manage members, chat in real time with markdown and highlighted code, and load older history by scrolling up. It runs with `npm run dev` or in Docker Compose behind nginx (http://localhost:3000). The backend gained Swagger UI (`/swagger`, Development only), and the refresh token moved to an `HttpOnly` cookie.
+- **Key files** (in `frontend/src`):
+  - `api/session.ts` (access token in memory, single-flight refresh serialized across tabs with Web Locks), `api/client.ts` (fetch wrapper, retry once after refresh on 401), `api/errors.ts` (ProblemDetails → `ApiError` with field errors).
+  - `auth/AuthProvider.tsx` + `RouteGuards.tsx`; `realtime/RealtimeProvider.tsx` (SignalR, optimistic send, retry); `messages/cache.ts` (upsert by id into the infinite query, conversation list reorder); `messages/MessageList.tsx` (upward infinite scroll, scroll anchoring).
+  - `markdown/Markdown.tsx` (react-markdown + gfm + sanitize, `remarkHtmlAsText`), `markdown/CodeBlock.tsx` + `highlighter.ts` (lazy Shiki, hast → JSX).
+  - `styles/tokens.css` (palette), `vite.config.ts` (dev proxy), `nginx.conf` + `security-headers.conf` + `Dockerfile`.
+  - Backend: `Api/Auth/RefreshTokenCookie.cs`, `Api/Auth/SessionResponse.cs`, `Api/OpenApi/ApiDocumentation.cs`.
+- **How to run / test**: `docker compose up --build` → http://localhost:3000. Dev: `cd frontend && npm run dev`. Checks: `npm test` (13 component tests), `npm run lint`, `npm run format:check`, `npm run build`. Backend: `dotnet test` (35 unit + 41 integration).
+- **Decisions taken during the phase**: all added to DECISIONS.md: refresh token in an `HttpOnly` cookie (open decision closed), `/api` prefix only at the proxy, cross-tab refresh lock, React Router + CSS Modules + self-hosted font, TanStack Query, Swagger in Development, raw HTML as text and images as links, Shiki via hast → JSX, nginx with a strict CSP. Fonts are never inlined as `data:` URIs (the CSP blocked one).
+- **Notes for next phases**:
+  - Phase 5: `RealtimeProvider` already has the hooks: `onreconnected` currently refetches every cached query (replace with a sync from the last received message). Sends are retried by hand with the same id; automatic retry and the "sending → delivered → read" indicators go there. `withAutomaticReconnect()` gives up after its default attempts and the state stays `disconnected`. The connection banner is still missing.
+  - Phase 6: `ChatMessage` already carries `parentMessageId`, `editedAt`, `deletedAt`; `upsertMessage` replaces by id, so edit/delete events can reuse it.
+  - Phase 7: presence/typing can go through the same provider and context.
+- **Known limitations / leftovers**:
+  - A user added to a conversation only sees it after a message arrives in it or the list refetches (no "added to conversation" event yet).
+  - The main JS chunk is ~185 kB gzipped; route-level code splitting can come later.
+  - No user search: members are added by exact username.
+  - The `Secure` cookie only works on `localhost` or HTTPS, so opening the app over plain HTTP from another machine on the LAN won't keep the session (fine until deploy, which uses HTTPS).
+
 
 ---
 
@@ -365,6 +384,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-20 | 4 | Browser flow confirmed by the user; CSP font fix (no inlined fonts); Phase 4 done and merged into develop | Start Phase 5 |
 | 2026-10-20 | 4 | Swagger UI at `/swagger` (chore, merged into develop and the phase branch). App shell: sidebar, conversation page, new conversation dialog, members panel (add, role, remove, leave), TanStack Query. Proxy chain checked end to end. SignalR provider, composer (optimistic send, retry), history with upward infinite scroll; two-client test through the proxy passes. Markdown + Shiki + sanitization (13 component tests), frontend in Compose behind nginx (CSP, `/api` proxy, WebSockets) | Browser check, close Phase 4 |
 | 2026-10-20 | 4 | Branch `phase-4-frontend`. Scaffold committed, design tokens, logo/favicon, Prettier. Refresh token moved to an HttpOnly cookie (backend + tests). API client (in-memory token, refresh serialized across tabs), auth context, login/register, route guards, Vite `/api` proxy | Run integration tests; Layout |
 | 2026-10-19 | — | Frontend folder decided: `frontend/` (not `web/`). Vite scaffold exists there, uncommitted. Local .NET runtime still 10.0.12 (user to update) | Phase 4: review scaffold |
