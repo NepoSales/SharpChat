@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
+import { Fragment, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import type { Member } from '../api/conversations'
 import { useAuth } from '../auth/useAuth'
 import { useRealtime } from '../realtime/useRealtime'
@@ -14,9 +14,11 @@ const NEAR_BOTTOM_PX = 120
 type Props = {
   conversationId: string
   members: Member[]
+  unreadOnOpen: { readSeq: number; lastSeq: number } | undefined
 }
 
-export function MessageList({ conversationId, members }: Props) {
+export function MessageList({ conversationId, members, unreadOnOpen }: Props) {
+  const [unreadRange] = useState(unreadOnOpen)
   const { user } = useAuth()
   const { markRead } = useRealtime()
   const history = useMessages(conversationId)
@@ -32,6 +34,14 @@ export function MessageList({ conversationId, members }: Props) {
   const firstId = messages.at(0)?.id
   const lastMessage = messages.at(-1)
   const lastSeq = messages.reduce((max, message) => Math.max(max, message.seq), 0)
+  const firstUnreadId = unreadRange
+    ? messages.find(
+        (message) =>
+          message.seq > unreadRange.readSeq &&
+          message.seq <= unreadRange.lastSeq &&
+          message.senderId !== user?.id,
+      )?.id
+    : undefined
   const otherMembers = members.filter((member) => member.userId !== user?.id)
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history
 
@@ -104,12 +114,18 @@ export function MessageList({ conversationId, members }: Props) {
         </p>
       )}
       {messages.map((message, index) => (
-        <MessageItem
-          key={message.id}
-          message={message}
-          showHeader={startsGroup(messages[index - 1], message)}
-          otherMembers={message.senderId === user?.id ? otherMembers : null}
-        />
+        <Fragment key={message.id}>
+          {message.id === firstUnreadId && (
+            <div className={styles.unreadDivider} role="separator">
+              <span>new messages</span>
+            </div>
+          )}
+          <MessageItem
+            message={message}
+            showHeader={message.id === firstUnreadId || startsGroup(messages[index - 1], message)}
+            otherMembers={message.senderId === user?.id ? otherMembers : null}
+          />
+        </Fragment>
       ))}
     </div>
   )

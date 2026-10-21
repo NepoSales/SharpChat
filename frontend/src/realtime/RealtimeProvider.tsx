@@ -29,7 +29,7 @@ type HubResponse<T> =
 
 type ReceiptKind = 'MarkDelivered' | 'MarkRead'
 
-const RECEIPT_DEBOUNCE_MS = 400
+const RECEIPT_DEBOUNCE_MS = 150
 const MAX_SYNC_PAGES = 5
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
