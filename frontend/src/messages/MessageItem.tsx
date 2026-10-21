@@ -61,24 +61,26 @@ export function MessageItem({
       data-continued={!showHeader}
     >
       <div className={styles.row}>
-        <time
-          className={styles.time}
-          dateTime={message.sentAt}
-          title={new Date(message.sentAt).toLocaleString()}
-        >
-          {formatShortTime(message.sentAt)}
-        </time>
-        <span
-          className={styles.prompt}
-          data-mine={isMine}
-          data-color={userColor(message.senderId)}
-          title={message.senderUserName}
-        >
-          <span className={styles.author}>{isMine ? 'you' : message.senderUserName}</span>
-          <span className={styles.caret} aria-hidden="true">
-            ›
+        <div className={styles.gutter}>
+          <time
+            className={styles.time}
+            dateTime={message.sentAt}
+            title={new Date(message.sentAt).toLocaleString()}
+          >
+            {formatShortTime(message.sentAt)}
+          </time>
+          <span
+            className={styles.prompt}
+            data-mine={isMine}
+            data-color={userColor(message.senderId)}
+            title={message.senderUserName}
+          >
+            <span className={styles.author}>{isMine ? 'you' : message.senderUserName}</span>
+            <span className={styles.caret} aria-hidden="true">
+              ›
+            </span>
           </span>
-        </span>
+        </div>
 
         <div className={styles.main}>
           {editing ? (
