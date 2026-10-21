@@ -14,6 +14,7 @@ docker compose up --build
 
 | Service | Address |
 |---|---|
+| Web app | http://localhost:3000 |
 | API | http://localhost:8080 |
 | Liveness | http://localhost:8080/health |
 | Readiness (Postgres + Redis) | http://localhost:8080/health/ready |
@@ -39,6 +40,10 @@ docker compose -f ../docker-compose.yml up -d postgres redis   # dependencies on
 dotnet run --project src/SharpChat.Api
 dotnet test
 ```
+
+Frontend (from `frontend/`, Node 24): `npm install` once, then `npm run dev` (http://localhost:5173). The dev server proxies `/api` to the API at http://localhost:8080 (override with `SHARPCHAT_API_URL`, e.g. `http://localhost:5266` for `dotnet run`). `npm test` runs the component tests, `npm run lint` and `npm run format:check` the static checks.
+
+The browser always talks to the API under `/api` on its own origin: Vite in development and nginx in Docker strip the prefix, upgrade WebSockets and rewrite the refresh cookie path. No CORS is needed.
 
 The JWT signing key is never committed: it comes from user-secrets locally and from `.env` in Docker. The API refuses to start without it.
 
