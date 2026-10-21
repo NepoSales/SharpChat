@@ -6,6 +6,9 @@ const apiUrl = process.env.SHARPCHAT_API_URL ?? 'http://localhost:8080'
 
 export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+  build: {
+    assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf)$/.test(filePath) ? false : undefined),
+  },
   server: {
     proxy: {
       '/api': {
