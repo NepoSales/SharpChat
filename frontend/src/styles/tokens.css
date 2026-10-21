@@ -11,6 +11,12 @@
   --color-success: #3fb950;
   --color-warning: #d29922;
   --color-error: #f85149;
+  --color-user-0: #2dd4bf;
+  --color-user-1: #f0883e;
+  --color-user-2: #f778ba;
+  --color-user-3: #56d364;
+  --color-user-4: #e3b341;
+  --color-user-5: #bc8cff;
 
   --font-sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
