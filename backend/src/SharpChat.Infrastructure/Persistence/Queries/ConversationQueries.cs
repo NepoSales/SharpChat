@@ -23,6 +23,7 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
                         && msg.SenderId != userId
                         && msg.ParentMessageId == null
                         && msg.DeletedAt == null)
+                    .OrderBy(msg => msg.Seq)
                     .Take(ChatOptions.UnreadCountCap)
                     .Count(),
             })
