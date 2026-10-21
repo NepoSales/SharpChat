@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using SharpChat.Api.Hubs;
+using SharpChat.Api.OpenApi;
 using SharpChat.Api.Services;
 using SharpChat.Application;
 using SharpChat.Application.Abstractions;
@@ -16,7 +17,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSignalR()
     .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddOpenApi();
+builder.Services.AddApiDocumentation();
 builder.Services.AddProblemDetails();
 
 builder.Services.AddApplication();
@@ -37,7 +38,7 @@ app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi().AllowAnonymous();
+    app.MapApiDocumentation();
 
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<SharpChatDbContext>().Database.MigrateAsync();
