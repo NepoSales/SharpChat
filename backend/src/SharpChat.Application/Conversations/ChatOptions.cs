@@ -16,4 +16,8 @@ public sealed class ChatOptions
     public int DefaultHistoryPageSize { get; set; } = 50;
 
     public const int MaxHistoryPageSize = 100;
+
+    public const int MaxChangesPageSize = 200;
+
+    public const int UnreadCountCap = 100;
 }

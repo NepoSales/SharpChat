@@ -14,6 +14,9 @@ public sealed class Message
     public string Content { get; private set; } = null!;
     public DateTimeOffset SentAt { get; private set; }
 
+    public long Seq { get; private set; }
+    public long ChangeSeq { get; private set; }
+
     public Guid? ParentMessageId { get; private set; }
 
     public DateTimeOffset? EditedAt { get; private set; }
@@ -25,11 +28,17 @@ public sealed class Message
         Guid senderId,
         string content,
         DateTimeOffset sentAt,
+        long seq,
         int maxContentLength)
     {
         if (id == Guid.Empty)
         {
             return MessageErrors.InvalidId;
+        }
+
+        if (seq <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(seq), seq, "Sequence numbers start at 1.");
         }
 
         if (string.IsNullOrWhiteSpace(content))
@@ -49,6 +58,8 @@ public sealed class Message
             SenderId = senderId,
             Content = content,
             SentAt = sentAt,
+            Seq = seq,
+            ChangeSeq = seq,
         };
     }
 

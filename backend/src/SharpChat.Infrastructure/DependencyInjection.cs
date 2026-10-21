@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IConversationQueries, ConversationQueries>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageQueries, MessageQueries>();
+        services.AddScoped<IReceiptStore, ReceiptStore>();
         services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;

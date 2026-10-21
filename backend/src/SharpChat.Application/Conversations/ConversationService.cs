@@ -102,7 +102,8 @@ public sealed class ConversationService(
             return conflict;
         }
 
-        return new MemberDto(user.Id, user.UserName, added.Value.Role, added.Value.JoinedAt);
+        return new MemberDto(
+            user.Id, user.UserName, added.Value.Role, added.Value.JoinedAt, added.Value.LastDeliveredSeq, added.Value.LastReadSeq);
     }
 
     public async Task<Result<MemberDto>> ChangeRoleAsync(

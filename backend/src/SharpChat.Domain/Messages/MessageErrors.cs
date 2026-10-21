@@ -13,6 +13,8 @@ public static class MessageErrors
 
     public static readonly Error InvalidCursor = Error.Validation("Before", "The cursor is invalid.");
 
+    public static readonly Error InvalidSeq = Error.Validation("Seq", "Sequence numbers can't be negative.");
+
     public static Error ContentTooLong(int maxLength) =>
         Error.Validation("Content", $"Message content can be at most {maxLength} characters.");
 }

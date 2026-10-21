@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<MembershipService>();
         services.AddScoped<ConversationService>();
         services.AddScoped<MessageService>();
+        services.AddScoped<ReceiptService>();
 
         return services;
     }

@@ -16,6 +16,14 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
                 Member = m,
                 Conversation = c,
                 LastMessageAt = db.Messages.Where(msg => msg.ConversationId == c.Id).Max(msg => (DateTimeOffset?)msg.SentAt),
+                LastSeq = db.Messages.Where(msg => msg.ConversationId == c.Id).Max(msg => (long?)msg.Seq) ?? 0,
+                UnreadCount = db.Messages
+                    .Where(msg => msg.ConversationId == c.Id
+                        && msg.Seq > m.LastReadSeq
+                        && msg.SenderId != userId
+                        && msg.DeletedAt == null)
+                    .Take(ChatOptions.UnreadCountCap)
+                    .Count(),
             })
             .OrderByDescending(x => x.LastMessageAt ?? x.Conversation.UpdatedAt)
             .Select(x => new ConversationSummaryDto(
@@ -25,7 +33,11 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
                 x.Member.Role,
                 x.Conversation.CreatedAt,
                 x.Conversation.UpdatedAt,
-                x.LastMessageAt))
+                x.LastMessageAt,
+                x.LastSeq,
+                x.Member.LastDeliveredSeq,
+                x.Member.LastReadSeq,
+                x.UnreadCount))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<MemberDto>> ListMembersAsync(Guid conversationId, CancellationToken cancellationToken) =>
@@ -66,5 +78,11 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
             .Where(m => m.ConversationId == conversationId && (userId == null || m.UserId == userId))
             .Join(db.Users, m => m.UserId, u => u.Id, (m, u) => new { Member = m, u.UserName })
             .OrderBy(x => x.Member.JoinedAt)
-            .Select(x => new MemberDto(x.Member.UserId, x.UserName!, x.Member.Role, x.Member.JoinedAt));
+            .Select(x => new MemberDto(
+                x.Member.UserId,
+                x.UserName!,
+                x.Member.Role,
+                x.Member.JoinedAt,
+                x.Member.LastDeliveredSeq,
+                x.Member.LastReadSeq));
 }

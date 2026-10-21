@@ -5,11 +5,12 @@ using System.Text;
 
 namespace SharpChat.Application.Messages;
 
-public sealed record MessageCursor(DateTimeOffset SentAt, Guid Id)
+public sealed record MessageCursor(long Seq)
 {
+    private const string Prefix = "s";
+
     public string Encode() =>
-        Base64Url.EncodeToString(Encoding.UTF8.GetBytes(
-            string.Create(CultureInfo.InvariantCulture, $"{SentAt.UtcTicks}_{Id:N}")));
+        Base64Url.EncodeToString(Encoding.UTF8.GetBytes(string.Create(CultureInfo.InvariantCulture, $"{Prefix}{Seq}")));
 
     public static bool TryDecode(string? value, [NotNullWhen(true)] out MessageCursor? cursor)
     {
@@ -21,13 +22,12 @@ public sealed record MessageCursor(DateTimeOffset SentAt, Guid Id)
 
         try
         {
-            var parts = Encoding.UTF8.GetString(Base64Url.DecodeFromChars(value)).Split('_');
-            if (parts.Length == 2
-                && long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var ticks)
-                && ticks is >= 0 and <= 3155378975999999999
-                && Guid.TryParseExact(parts[1], "N", out var id))
+            var text = Encoding.UTF8.GetString(Base64Url.DecodeFromChars(value));
+            if (text.StartsWith(Prefix, StringComparison.Ordinal)
+                && long.TryParse(text.AsSpan(Prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var seq)
+                && seq > 0)
             {
-                cursor = new MessageCursor(new DateTimeOffset(ticks, TimeSpan.Zero), id);
+                cursor = new MessageCursor(seq);
                 return true;
             }
         }

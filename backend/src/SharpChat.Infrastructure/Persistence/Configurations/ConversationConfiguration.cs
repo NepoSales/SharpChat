@@ -31,6 +31,7 @@ internal sealed class ConversationMemberConfiguration : IEntityTypeConfiguration
     public void Configure(EntityTypeBuilder<ConversationMember> builder)
     {
         builder.ToTable("ConversationMembers");
+        builder.Ignore(m => m.Receipt);
         builder.HasKey(m => new { m.ConversationId, m.UserId });
 
         builder.HasIndex(m => m.UserId);

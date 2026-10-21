@@ -19,5 +19,10 @@ public sealed class ConversationMember
     public ConversationRole Role { get; internal set; }
     public DateTimeOffset JoinedAt { get; private set; }
 
+    public long LastDeliveredSeq { get; private set; }
+    public long LastReadSeq { get; private set; }
+
+    public ReceiptPosition Receipt => new(LastDeliveredSeq, LastReadSeq);
+
     public bool CanManageMembers => Role >= ConversationRole.Admin;
 }

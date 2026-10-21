@@ -16,11 +16,13 @@ public sealed class ChatClient : IAsyncDisposable
 
     private readonly HubConnection _connection;
     private readonly Channel<MessageDto> _received = Channel.CreateUnbounded<MessageDto>();
+    private readonly Channel<ReceiptDto> _receipts = Channel.CreateUnbounded<ReceiptDto>();
 
     private ChatClient(HubConnection connection)
     {
         _connection = connection;
         _connection.On<MessageDto>(nameof(IChatClient.MessageReceived), message => _received.Writer.TryWrite(message));
+        _connection.On<ReceiptDto>(nameof(IChatClient.ReceiptUpdated), receipt => _receipts.Writer.TryWrite(receipt));
     }
 
     public static async Task<ChatClient> ConnectAsync<T>(WebApplicationFactory<T> factory, string? accessToken)
@@ -53,6 +55,24 @@ public sealed class ChatClient : IAsyncDisposable
         var response = await SendAsync(conversationId, content);
         Assert.Null(response.Error);
         return response.Data!;
+    }
+
+    public Task<HubResponse<ReceiptDto>> MarkDeliveredAsync(Guid conversationId, long seq) =>
+        _connection.InvokeAsync<HubResponse<ReceiptDto>>(nameof(ChatHub.MarkDelivered), new MarkReceiptRequest(conversationId, seq));
+
+    public Task<HubResponse<ReceiptDto>> MarkReadAsync(Guid conversationId, long seq) =>
+        _connection.InvokeAsync<HubResponse<ReceiptDto>>(nameof(ChatHub.MarkRead), new MarkReceiptRequest(conversationId, seq));
+
+    public async Task<ReceiptDto> NextReceiptAsync()
+    {
+        using var timeout = new CancellationTokenSource(ReceiveTimeout);
+        return await _receipts.Reader.ReadAsync(timeout.Token);
+    }
+
+    public async Task AssertNoReceiptAsync(TimeSpan wait)
+    {
+        await Task.Delay(wait);
+        Assert.False(_receipts.Reader.TryRead(out var unexpected), $"Unexpected receipt from {unexpected?.UserId}");
     }
 
     public async Task<MessageDto> NextMessageAsync()

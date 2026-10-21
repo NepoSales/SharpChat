@@ -9,8 +9,16 @@ public sealed record MessageDto(
     string SenderUserName,
     string Content,
     DateTimeOffset SentAt,
+    long Seq,
+    long ChangeSeq,
     Guid? ParentMessageId,
     DateTimeOffset? EditedAt,
     DateTimeOffset? DeletedAt);
 
 public sealed record MessagePage(IReadOnlyList<MessageDto> Items, string? NextCursor);
+
+public sealed record MessageChanges(IReadOnlyList<MessageDto> Items, bool HasMore);
+
+public sealed record MarkReceiptRequest(Guid ConversationId, long Seq);
+
+public sealed record ReceiptDto(Guid ConversationId, Guid UserId, long LastDeliveredSeq, long LastReadSeq);

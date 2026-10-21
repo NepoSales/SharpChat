@@ -16,7 +16,8 @@ internal sealed class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.Property(m => m.Content).HasColumnType("text").IsRequired();
 
-        builder.HasIndex(m => new { m.ConversationId, m.SentAt, m.Id });
+        builder.HasIndex(m => new { m.ConversationId, m.Seq }).IsUnique();
+        builder.HasIndex(m => new { m.ConversationId, m.ChangeSeq }).IsUnique();
 
         builder.HasOne<Conversation>().WithMany().HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Restrict);
