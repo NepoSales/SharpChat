@@ -111,4 +111,14 @@ describe('MessageItem states', () => {
 
     expect(screen.getByRole('button', { name: /2 replies/ })).toBeInTheDocument()
   })
+
+  it('shows who sent the message as a prompt', () => {
+    const { unmount } = renderItem({ isMine: false })
+    expect(screen.getByTitle('alice')).toHaveTextContent('alice›')
+    unmount()
+
+    renderItem({ isMine: true })
+    expect(screen.getByTitle('alice')).toHaveTextContent('you›')
+    expect(screen.getByTitle('alice')).toHaveAttribute('data-mine', 'true')
+  })
 })

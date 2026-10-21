@@ -3,6 +3,7 @@ import type { Member } from '../api/conversations'
 import { Button } from '../components/ui/Button'
 import { Dialog } from '../components/ui/Dialog'
 import { formatShortTime } from '../components/ui/format'
+import { userColor } from '../components/ui/userColor'
 import { Markdown } from '../markdown/Markdown'
 import { useRealtime } from '../realtime/useRealtime'
 import type { ChatMessage } from './cache'
@@ -53,15 +54,94 @@ export function MessageItem({
   }
 
   return (
-    <article className={styles.message} data-status={message.status} data-editing={editing}>
-      {showHeader && (
-        <header className={styles.header}>
-          <span className={styles.author}>{message.senderUserName}</span>
-          <time className={styles.time} dateTime={message.sentAt}>
-            {formatShortTime(message.sentAt)}
-          </time>
-        </header>
-      )}
+    <article
+      className={styles.message}
+      data-status={message.status}
+      data-editing={editing}
+      data-continued={!showHeader}
+    >
+      <div className={styles.row}>
+        <time
+          className={styles.time}
+          dateTime={message.sentAt}
+          title={new Date(message.sentAt).toLocaleString()}
+        >
+          {formatShortTime(message.sentAt)}
+        </time>
+        <span
+          className={styles.prompt}
+          data-mine={isMine}
+          data-color={userColor(message.senderId)}
+          title={message.senderUserName}
+        >
+          <span className={styles.author}>{isMine ? 'you' : message.senderUserName}</span>
+          <span className={styles.caret} aria-hidden="true">
+            ›
+          </span>
+        </span>
+
+        <div className={styles.main}>
+          {editing ? (
+            <MessageEditor
+              initialContent={message.content}
+              onSave={(content) => editMessage(message, content)}
+              onCancel={() => onEditingChange(false)}
+            />
+          ) : (
+            <div className={styles.body}>
+              <div className={styles.content}>
+                {deleted ? (
+                  <p className={styles.deleted}>message deleted</p>
+                ) : (
+                  <>
+                    <Markdown content={message.content} />
+                    {message.editedAt && (
+                      <span
+                        className={styles.edited}
+                        title={new Date(message.editedAt).toLocaleString()}
+                      >
+                        (edited)
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              {tag && (
+                <span
+                  className={styles.tag}
+                  data-tone={tag.tone}
+                  title={
+                    message.status === 'failed'
+                      ? message.error
+                      : tag.readers.length > 0
+                        ? `Read by ${tag.readers.join(', ')}`
+                        : undefined
+                  }
+                >
+                  [{tag.label}]
+                  {message.status === 'failed' && (
+                    <button className={styles.retry} onClick={() => retryMessage(message)}>
+                      retry
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
+
+          {showThread && (
+            <button
+              className={styles.thread}
+              data-new={thread.hasNewReplies}
+              onClick={thread.onOpen}
+            >
+              {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
+              {message.lastReplyAt && <> · last {formatShortTime(message.lastReplyAt)}</>}
+              {thread.hasNewReplies && <span className={styles.newReplies}> · new</span>}
+            </button>
+          )}
+        </div>
+      </div>
 
       {actions && (
         <div className={styles.actions} role="toolbar" aria-label="Message actions">
@@ -87,62 +167,6 @@ export function MessageItem({
             </button>
           )}
         </div>
-      )}
-
-      {editing ? (
-        <MessageEditor
-          initialContent={message.content}
-          onSave={(content) => editMessage(message, content)}
-          onCancel={() => onEditingChange(false)}
-        />
-      ) : (
-        <div className={styles.body}>
-          <div className={styles.content}>
-            {deleted ? (
-              <p className={styles.deleted}>message deleted</p>
-            ) : (
-              <>
-                <Markdown content={message.content} />
-                {message.editedAt && (
-                  <span
-                    className={styles.edited}
-                    title={new Date(message.editedAt).toLocaleString()}
-                  >
-                    (edited)
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-          {tag && (
-            <span
-              className={styles.tag}
-              data-tone={tag.tone}
-              title={
-                message.status === 'failed'
-                  ? message.error
-                  : tag.readers.length > 0
-                    ? `Read by ${tag.readers.join(', ')}`
-                    : undefined
-              }
-            >
-              [{tag.label}]
-              {message.status === 'failed' && (
-                <button className={styles.retry} onClick={() => retryMessage(message)}>
-                  retry
-                </button>
-              )}
-            </span>
-          )}
-        </div>
-      )}
-
-      {showThread && (
-        <button className={styles.thread} data-new={thread.hasNewReplies} onClick={thread.onOpen}>
-          {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
-          {message.lastReplyAt && <> · last {formatShortTime(message.lastReplyAt)}</>}
-          {thread.hasNewReplies && <span className={styles.newReplies}> · new</span>}
-        </button>
       )}
 
       <Dialog
