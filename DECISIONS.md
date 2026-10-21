@@ -52,7 +52,6 @@ sharpchat/
 ├── docker-compose.yml             # Orchestrates backend, frontend and dependencies
 ├── .env.example                   # Template for local secrets (.env is gitignored)
 ├── DECISIONS.md
-├── IMPLEMENTATION_PLAN.md
 ├── backend/
 │   ├── SharpChat.sln
 │   ├── Directory.Build.props      # Shared build settings
