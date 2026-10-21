@@ -34,7 +34,16 @@ public sealed class ChatHub(
     public override async Task OnConnectedAsync()
     {
         registry.Add(Context.ConnectionId, UserId);
-        await presence.ConnectedAsync(UserId, Context.ConnectionId, Context.ConnectionAborted);
+        try
+        {
+            await presence.ConnectedAsync(UserId, Context.ConnectionId, CancellationToken.None);
+        }
+        catch
+        {
+            registry.Remove(Context.ConnectionId);
+            throw;
+        }
+
         await base.OnConnectedAsync();
     }
 

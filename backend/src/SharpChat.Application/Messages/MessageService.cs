@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using SharpChat.Application.Abstractions;
 using SharpChat.Application.Common;
 using SharpChat.Application.Conversations;
+using SharpChat.Application.Diagnostics;
 using SharpChat.Domain.Common;
 using SharpChat.Domain.Conversations;
 using SharpChat.Domain.Messages;
@@ -16,39 +17,22 @@ public sealed class MessageService(
     IChatNotifier notifier,
     ICurrentUser currentUser,
     IOptions<ChatOptions> options,
+    ChatMetrics metrics,
     TimeProvider time)
 {
     public async Task<Result<MessageDto>> SendAsync(Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
     {
-        var members = await conversationQueries.ListMembersAsync(request.ConversationId, cancellationToken);
-        var sender = members.FirstOrDefault(m => m.UserId == senderId);
-        if (sender is null)
-        {
-            return ConversationErrors.NotFound;
-        }
-
-        var stored = await StoreAsync(senderId, request, cancellationToken);
-        if (!stored.IsSuccess)
-        {
-            return stored.Error;
-        }
-
-        var (message, parent) = stored.Value;
-        var recipients = members.Select(m => m.UserId).ToList();
-        var dto = ToDto(message, sender.UserName);
-        await notifier.MessageCreatedAsync(dto, recipients, cancellationToken);
-        if (parent is not null && await messageQueries.GetAsync(parent.Id, cancellationToken) is { } parentDto)
-        {
-            await notifier.MessageUpdatedAsync(parentDto, recipients, cancellationToken);
-        }
-
-        return dto;
+        var started = time.GetTimestamp();
+        var (result, outcome) = await SendCoreAsync(senderId, request, cancellationToken);
+        metrics.SendCompleted(outcome, time.GetElapsedTime(started));
+        return result;
     }
 
     public Task<Result<MessageDto>> EditAsync(Guid actorId, EditMessageRequest request, CancellationToken cancellationToken) =>
         ChangeAsync(
             actorId,
             request.MessageId,
+            MessageChange.Edited,
             (message, _, changeSeq) => message.Edit(
                 actorId, request.Content, TruncateToMicroseconds(time.GetUtcNow()), changeSeq, options.Value.MaxMessageLength),
             cancellationToken);
@@ -57,6 +41,7 @@ public sealed class MessageService(
         ChangeAsync(
             actorId,
             request.MessageId,
+            MessageChange.Deleted,
             (message, role, changeSeq) => message.Delete(actorId, role, TruncateToMicroseconds(time.GetUtcNow()), changeSeq),
             cancellationToken);
 
@@ -140,7 +125,41 @@ public sealed class MessageService(
         return new MessagePage(page, nextCursor);
     }
 
-    private async Task<Result<(Message Message, Message? Parent)>> StoreAsync(
+    private async Task<(Result<MessageDto> Result, SendOutcome Outcome)> SendCoreAsync(
+        Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
+    {
+        var members = await conversationQueries.ListMembersAsync(request.ConversationId, cancellationToken);
+        var sender = members.FirstOrDefault(m => m.UserId == senderId);
+        if (sender is null)
+        {
+            return (ConversationErrors.NotFound, SendOutcome.Rejected);
+        }
+
+        var stored = await StoreAsync(senderId, request, cancellationToken);
+        if (!stored.IsSuccess)
+        {
+            return (stored.Error, SendOutcome.Rejected);
+        }
+
+        var (message, parent, created) = stored.Value;
+        var recipients = members.Select(m => m.UserId).ToList();
+        var dto = ToDto(message, sender.UserName);
+        await notifier.MessageCreatedAsync(dto, recipients, cancellationToken);
+        if (parent is not null && await messageQueries.GetAsync(parent.Id, cancellationToken) is { } parentDto)
+        {
+            await notifier.MessageUpdatedAsync(parentDto, recipients, cancellationToken);
+        }
+
+        if (!created)
+        {
+            return (dto, SendOutcome.Duplicate);
+        }
+
+        metrics.MessageSent(isReply: message.ParentMessageId is not null);
+        return (dto, SendOutcome.Created);
+    }
+
+    private async Task<Result<(Message Message, Message? Parent, bool Created)>> StoreAsync(
         Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
     {
         try
@@ -151,7 +170,7 @@ public sealed class MessageService(
             if (existing is not null)
             {
                 return existing.IsSameSend(request.ConversationId, senderId, request.ParentMessageId)
-                    ? (existing, null)
+                    ? (existing, null, false)
                     : MessageErrors.IdConflict;
             }
 
@@ -185,7 +204,7 @@ public sealed class MessageService(
             messages.Add(created.Value);
             await messages.SaveChangesAsync(cancellationToken);
             await write.CommitAsync(cancellationToken);
-            return (created.Value, parent);
+            return (created.Value, parent, true);
         }
         catch (DuplicateKeyException)
         {
@@ -196,6 +215,7 @@ public sealed class MessageService(
     private async Task<Result<MessageDto>> ChangeAsync(
         Guid actorId,
         Guid messageId,
+        MessageChange kind,
         Func<Message, ConversationRole, long, Result> change,
         CancellationToken cancellationToken)
     {
@@ -229,6 +249,7 @@ public sealed class MessageService(
                 await messages.SaveChangesAsync(cancellationToken);
                 await write.CommitAsync(cancellationToken);
                 changed = true;
+                metrics.MessageChanged(kind);
             }
         }
 

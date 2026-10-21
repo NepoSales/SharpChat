@@ -1,4 +1,5 @@
 using SharpChat.Application.Abstractions;
+using SharpChat.Application.Diagnostics;
 using SharpChat.Domain.Common;
 using SharpChat.Domain.Conversations;
 
@@ -7,12 +8,14 @@ namespace SharpChat.Application.Presence;
 public sealed class PresenceService(
     IPresenceTracker tracker,
     IConversationQueries conversations,
-    IChatNotifier notifier)
+    IChatNotifier notifier,
+    ChatMetrics metrics)
 {
     public async Task ConnectedAsync(Guid userId, string connectionId, CancellationToken cancellationToken)
     {
         if (await tracker.ConnectAsync(userId, connectionId, cancellationToken))
         {
+            metrics.PresenceChanged(isOnline: true);
             await NotifyContactsAsync(new PresenceDto(userId, IsOnline: true), cancellationToken);
         }
     }
@@ -21,6 +24,7 @@ public sealed class PresenceService(
     {
         if (await tracker.DisconnectAsync(userId, connectionId, cancellationToken))
         {
+            metrics.PresenceChanged(isOnline: false);
             await NotifyContactsAsync(new PresenceDto(userId, IsOnline: false), cancellationToken);
         }
     }

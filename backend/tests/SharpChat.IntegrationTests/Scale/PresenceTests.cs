@@ -48,6 +48,31 @@ public sealed class PresenceTests(SharpChatApiFactory factory)
     }
 
     [Fact]
+    public async Task Tabs_closed_while_connecting_still_go_offline()
+    {
+        await using var freshInstance = factory.WithWebHostBuilder(builder => builder.UseSetting("InstanceName", "fresh"));
+        var bob = await TestUser.CreateAsync(freshInstance);
+        var firstTab = await bob.ConnectToChatAsync(freshInstance);
+        var secondTab = await bob.ConnectToChatAsync(freshInstance);
+        await firstTab.DisposeAsync();
+        await secondTab.DisposeAsync();
+
+        var alice = await TestUser.CreateAsync(factory);
+        var conversation = await alice.CreateConversationOkAsync("team", bob);
+        await using var aliceChat = await alice.ConnectToChatAsync(factory);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        IReadOnlyList<Guid> online;
+        do
+        {
+            await Task.Delay(100);
+            online = (await aliceChat.GetOnlineMembersAsync(conversation.Id)).Data!;
+        }
+        while (online.Contains(bob.Id) && DateTime.UtcNow < deadline);
+
+        Assert.DoesNotContain(bob.Id, online);
+    }
+
+    [Fact]
     public async Task Strangers_are_not_told_about_presence()
     {
         var alice = await TestUser.CreateAsync(factory);

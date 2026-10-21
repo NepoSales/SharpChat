@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using SharpChat.Api.Common;
 using SharpChat.Api.Hubs;
+using SharpChat.Api.Observability;
 using SharpChat.Api.OpenApi;
 using SharpChat.Api.RateLimiting;
 using SharpChat.Api.Services;
@@ -14,6 +15,8 @@ using SharpChat.Infrastructure.HealthChecks;
 using SharpChat.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddObservability();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -35,6 +38,7 @@ builder.Services.AddAuthorizationBuilder()
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseObservability();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
