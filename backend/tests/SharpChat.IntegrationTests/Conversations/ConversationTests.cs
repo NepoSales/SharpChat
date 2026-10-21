@@ -75,6 +75,23 @@ public sealed class ConversationTests(SharpChatApiFactory factory)
     }
 
     [Fact]
+    public async Task Invalid_member_requests_are_rejected_before_touching_the_conversation()
+    {
+        var owner = await TestUser.CreateAsync(factory);
+        var conversation = await owner.CreateConversationOkAsync("team");
+
+        var blankName = await owner.CreateConversationAsync("   ");
+        var blankUser = await owner.AddMemberAsync(conversation.Id, "");
+        var unknownUser = await owner.AddMemberAsync(conversation.Id, "ghost_user_does_not_exist");
+        var unknownRole = await owner.ChangeRoleAsync(conversation.Id, owner.Id, (ConversationRole)99);
+
+        Assert.Equal(
+            [HttpStatusCode.BadRequest, HttpStatusCode.BadRequest, HttpStatusCode.NotFound, HttpStatusCode.BadRequest],
+            [blankName.StatusCode, blankUser.StatusCode, unknownUser.StatusCode, unknownRole.StatusCode]);
+        Assert.Equal("user_not_found", await unknownUser.ErrorCodeAsync());
+    }
+
+    [Fact]
     public async Task Owner_and_admins_add_members_but_members_cannot()
     {
         var owner = await TestUser.CreateAsync(factory);
