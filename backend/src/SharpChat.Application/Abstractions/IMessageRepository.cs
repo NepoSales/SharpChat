@@ -15,7 +15,7 @@ public interface IMessageRepository
 
 public interface ISequencedWrite : IAsyncDisposable
 {
-    long NextSeq { get; }
+    long TakeSeq();
 
     Task CommitAsync(CancellationToken cancellationToken);
 }

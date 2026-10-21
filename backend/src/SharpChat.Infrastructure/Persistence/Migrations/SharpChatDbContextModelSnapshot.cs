@@ -215,8 +215,17 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("EditedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("LastReplyAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("LastReplySeq")
+                        .HasColumnType("bigint");
+
                     b.Property<Guid?>("ParentMessageId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("SenderId")
                         .HasColumnType("uuid");
@@ -229,8 +238,6 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentMessageId");
-
                     b.HasIndex("SenderId");
 
                     b.HasIndex("ConversationId", "ChangeSeq")
@@ -238,6 +245,8 @@ namespace SharpChat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ConversationId", "Seq")
                         .IsUnique();
+
+                    b.HasIndex("ParentMessageId", "Seq");
 
                     b.ToTable("Messages", (string)null);
                 });

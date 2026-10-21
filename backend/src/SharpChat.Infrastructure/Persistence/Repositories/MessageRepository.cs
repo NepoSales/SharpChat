@@ -50,7 +50,9 @@ internal sealed class MessageRepository(SharpChatDbContext db) : IMessageReposit
 
     private sealed class SequencedWrite(IDbContextTransaction transaction, long nextSeq) : ISequencedWrite
     {
-        public long NextSeq => nextSeq;
+        private long _nextSeq = nextSeq;
+
+        public long TakeSeq() => _nextSeq++;
 
         public Task CommitAsync(CancellationToken cancellationToken) => transaction.CommitAsync(cancellationToken);
 

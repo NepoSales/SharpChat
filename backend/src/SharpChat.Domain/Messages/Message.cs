@@ -1,4 +1,5 @@
 using SharpChat.Domain.Common;
+using SharpChat.Domain.Conversations;
 
 namespace SharpChat.Domain.Messages;
 
@@ -18,9 +19,14 @@ public sealed class Message
     public long ChangeSeq { get; private set; }
 
     public Guid? ParentMessageId { get; private set; }
+    public int ReplyCount { get; private set; }
+    public DateTimeOffset? LastReplyAt { get; private set; }
+    public long? LastReplySeq { get; private set; }
 
     public DateTimeOffset? EditedAt { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
+
+    public bool IsDeleted => DeletedAt is not null;
 
     public static Result<Message> Create(
         Guid id,
@@ -36,19 +42,12 @@ public sealed class Message
             return MessageErrors.InvalidId;
         }
 
-        if (seq <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(seq), seq, "Sequence numbers start at 1.");
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(seq);
 
-        if (string.IsNullOrWhiteSpace(content))
+        var invalid = ValidateContent(content, maxContentLength);
+        if (invalid is not null)
         {
-            return MessageErrors.EmptyContent;
-        }
-
-        if (content.Length > maxContentLength)
-        {
-            return MessageErrors.ContentTooLong(maxContentLength);
+            return invalid;
         }
 
         return new Message
@@ -63,5 +62,93 @@ public sealed class Message
         };
     }
 
-    public bool IsSameSend(Guid conversationId, Guid senderId) => ConversationId == conversationId && SenderId == senderId;
+    public Result<Message> Reply(
+        Guid id,
+        Guid senderId,
+        string content,
+        DateTimeOffset sentAt,
+        long seq,
+        long parentChangeSeq,
+        int maxContentLength)
+    {
+        if (ParentMessageId is not null)
+        {
+            return MessageErrors.NestedReply;
+        }
+
+        if (IsDeleted)
+        {
+            return MessageErrors.Deleted;
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(parentChangeSeq, seq);
+
+        var created = Create(id, ConversationId, senderId, content, sentAt, seq, maxContentLength);
+        if (!created.IsSuccess)
+        {
+            return created;
+        }
+
+        created.Value.ParentMessageId = Id;
+        ReplyCount++;
+        LastReplyAt = sentAt;
+        LastReplySeq = seq;
+        ChangeSeq = parentChangeSeq;
+        return created;
+    }
+
+    public Result Edit(Guid actorId, string content, DateTimeOffset now, long changeSeq, int maxContentLength)
+    {
+        if (IsDeleted)
+        {
+            return MessageErrors.Deleted;
+        }
+
+        if (actorId != SenderId)
+        {
+            return MessageErrors.NotAuthor;
+        }
+
+        var invalid = ValidateContent(content, maxContentLength);
+        if (invalid is not null)
+        {
+            return invalid;
+        }
+
+        Content = content;
+        EditedAt = now;
+        ChangeSeq = changeSeq;
+        return Result.Success();
+    }
+
+    public Result Delete(Guid actorId, ConversationRole actorRole, DateTimeOffset now, long changeSeq)
+    {
+        if (actorId != SenderId && actorRole < ConversationRole.Admin)
+        {
+            return MessageErrors.CannotDelete;
+        }
+
+        if (IsDeleted)
+        {
+            return Result.Success();
+        }
+
+        Content = string.Empty;
+        DeletedAt = now;
+        ChangeSeq = changeSeq;
+        return Result.Success();
+    }
+
+    public bool IsSameSend(Guid conversationId, Guid senderId, Guid? parentMessageId) =>
+        ConversationId == conversationId && SenderId == senderId && ParentMessageId == parentMessageId;
+
+    private static Error? ValidateContent(string content, int maxContentLength)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return MessageErrors.EmptyContent;
+        }
+
+        return content.Length > maxContentLength ? MessageErrors.ContentTooLong(maxContentLength) : null;
+    }
 }

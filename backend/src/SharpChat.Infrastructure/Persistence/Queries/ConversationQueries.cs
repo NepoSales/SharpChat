@@ -21,6 +21,7 @@ internal sealed class ConversationQueries(SharpChatDbContext db) : IConversation
                     .Where(msg => msg.ConversationId == c.Id
                         && msg.Seq > m.LastReadSeq
                         && msg.SenderId != userId
+                        && msg.ParentMessageId == null
                         && msg.DeletedAt == null)
                     .Take(ChatOptions.UnreadCountCap)
                     .Count(),

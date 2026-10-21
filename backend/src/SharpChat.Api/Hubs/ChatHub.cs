@@ -9,6 +9,8 @@ public interface IChatClient
 {
     Task MessageReceived(MessageDto message);
 
+    Task MessageUpdated(MessageDto message);
+
     Task ReceiptUpdated(ReceiptDto receipt);
 }
 
@@ -22,6 +24,18 @@ public sealed class ChatHub(MessageService messages, ReceiptService receipts) : 
     public async Task<HubResponse<MessageDto>> SendMessage(SendMessageRequest request)
     {
         var result = await messages.SendAsync(UserId, request, Context.ConnectionAborted);
+        return result.IsSuccess ? HubResponse<MessageDto>.Ok(result.Value) : HubResponse<MessageDto>.Fail(result.Error);
+    }
+
+    public async Task<HubResponse<MessageDto>> EditMessage(EditMessageRequest request)
+    {
+        var result = await messages.EditAsync(UserId, request, Context.ConnectionAborted);
+        return result.IsSuccess ? HubResponse<MessageDto>.Ok(result.Value) : HubResponse<MessageDto>.Fail(result.Error);
+    }
+
+    public async Task<HubResponse<MessageDto>> DeleteMessage(DeleteMessageRequest request)
+    {
+        var result = await messages.DeleteAsync(UserId, request, Context.ConnectionAborted);
         return result.IsSuccess ? HubResponse<MessageDto>.Ok(result.Value) : HubResponse<MessageDto>.Fail(result.Error);
     }
 

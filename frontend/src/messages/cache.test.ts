@@ -15,6 +15,9 @@ function message(id: string, seq: number, extra: Partial<ChatMessage> = {}): Cha
     seq,
     changeSeq: seq,
     parentMessageId: null,
+    replyCount: 0,
+    lastReplyAt: null,
+    lastReplySeq: null,
     editedAt: null,
     deletedAt: null,
     ...extra,
@@ -92,5 +95,44 @@ describe('message cache', () => {
     upsertMessage(queryClient, message('a', 1))
 
     expect(lastChangeSeq(queryClient, conversationId)).toBeNull()
+  })
+
+  it('routes replies to their thread and leaves the main list alone', () => {
+    seed(message('parent', 1))
+    queryClient.setQueryData<InfiniteData<ChatPage, string | null>>(
+      messageKeys.replies(conversationId, 'parent'),
+      { pages: [{ items: [], nextCursor: null }], pageParams: [null] },
+    )
+
+    upsertMessage(queryClient, message('reply', 2, { parentMessageId: 'parent' }))
+
+    expect(ids()).toEqual(['parent:1'])
+    const thread = queryClient.getQueryData<InfiniteData<ChatPage, string | null>>(
+      messageKeys.replies(conversationId, 'parent'),
+    )!
+    expect(thread.pages[0].items.map((item) => item.id)).toEqual(['reply'])
+    expect(lastChangeSeq(queryClient, conversationId)).toBe(2)
+  })
+
+  it('ignores updates to messages older than the loaded pages', () => {
+    queryClient.setQueryData<InfiniteData<ChatPage, string | null>>(
+      messageKeys.list(conversationId),
+      {
+        pages: [{ items: [message('recent', 40)], nextCursor: 'older' }],
+        pageParams: [null],
+      },
+    )
+
+    upsertMessage(queryClient, message('ancient', 3, { changeSeq: 41, content: 'edited' }))
+
+    expect(ids()).toEqual(['recent:40'])
+  })
+
+  it('keeps updates to old messages once the whole history is loaded', () => {
+    seed(message('recent', 40))
+
+    upsertMessage(queryClient, message('ancient', 3, { changeSeq: 41 }))
+
+    expect(ids()).toEqual(['ancient:3', 'recent:40'])
   })
 })

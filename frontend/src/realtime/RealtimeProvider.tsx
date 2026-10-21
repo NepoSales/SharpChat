@@ -43,6 +43,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const receiptsRef = useRef(new Map<string, number>())
   const sentReceiptsRef = useRef(new Map<string, number>())
   const receiptTimerRef = useRef<number | null>(null)
+  const positionsRef = useRef(new Map<string, number>())
   const [state, setState] = useState<ConnectionState>('connecting')
 
   async function deliver(message: ChatMessage) {
@@ -53,6 +54,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         conversationId: message.conversationId,
         messageId: message.id,
         content: message.content,
+        parentMessageId: message.parentMessageId,
       })
       outboxRef.current.delete(message.id)
       if (response.error) {
@@ -107,15 +109,30 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  function knownPosition(conversationId: string) {
+    const cached = lastChangeSeq(queryClient, conversationId)
+    if (cached === null) return null
+    return Math.max(cached, positionsRef.current.get(conversationId) ?? 0)
+  }
+
+  function advancePosition(message: Message) {
+    const current = positionsRef.current.get(message.conversationId) ?? 0
+    if (message.changeSeq > current)
+      positionsRef.current.set(message.conversationId, message.changeSeq)
+  }
+
   function syncConversation(conversationId: string) {
     const running = syncingRef.current.get(conversationId)
     if (running) return running
     const task = (async () => {
       for (let page = 0; page < MAX_SYNC_PAGES; page++) {
-        const after = lastChangeSeq(queryClient, conversationId)
+        const after = knownPosition(conversationId)
         if (after === null) return
         const changes = await getChanges(conversationId, after)
-        changes.items.forEach((message) => upsertMessage(queryClient, message))
+        changes.items.forEach((message) => {
+          upsertMessage(queryClient, message)
+          advancePosition(message)
+        })
         const newest = changes.items.at(-1)
         if (newest) {
           touchConversation(queryClient, newest, userId)
@@ -124,7 +141,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         }
         if (!changes.hasMore) return
       }
-      await queryClient.resetQueries({ queryKey: messageKeys.list(conversationId) })
+      positionsRef.current.delete(conversationId)
+      await queryClient.resetQueries({ queryKey: messageKeys.conversation(conversationId) })
     })()
       .catch(() => undefined)
       .finally(() => syncingRef.current.delete(conversationId))
@@ -139,12 +157,15 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     void flushReceipts()
   }
 
-  function handleMessage(message: Message) {
-    const known = lastChangeSeq(queryClient, message.conversationId)
+  function applyChange(message: Message, isNew: boolean) {
+    const known = knownPosition(message.conversationId)
     upsertMessage(queryClient, message)
-    touchConversation(queryClient, message, userId)
-    if (message.senderId !== userId) {
-      scheduleReceipt('MarkDelivered', message.conversationId, message.seq)
+    advancePosition(message)
+    if (isNew) {
+      touchConversation(queryClient, message, userId)
+      if (message.senderId !== userId) {
+        scheduleReceipt('MarkDelivered', message.conversationId, message.seq)
+      }
     }
     if (known !== null && message.changeSeq > known + 1) {
       void syncConversation(message.conversationId)
@@ -152,13 +173,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }
 
   const handlers = useRef<{
-    handleMessage: (message: Message) => void
+    applyChange: (message: Message, isNew: boolean) => void
     resync: () => void
     applyReceipt: (receipt: Receipt) => void
   } | null>(null)
   useEffect(() => {
     handlers.current = {
-      handleMessage,
+      applyChange,
       resync,
       applyReceipt: (receipt) => applyReceipt(queryClient, receipt, userId),
     }
@@ -181,7 +202,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       .configureLogging(import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning)
       .build()
 
-    connection.on('MessageReceived', (message: Message) => handlers.current?.handleMessage(message))
+    connection.on('MessageReceived', (message: Message) =>
+      handlers.current?.applyChange(message, true),
+    )
+    connection.on('MessageUpdated', (message: Message) =>
+      handlers.current?.applyChange(message, false),
+    )
     connection.on('ReceiptUpdated', (receipt: Receipt) => handlers.current?.applyReceipt(receipt))
     connection.onreconnecting(() => setState('reconnecting'))
     connection.onreconnected(() => {
@@ -227,7 +253,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       .forEach((summary) => scheduleReceipt('MarkDelivered', summary.id, summary.lastSeq))
   })
 
-  function sendMessage(conversationId: string, content: string) {
+  function sendMessage(
+    conversationId: string,
+    content: string,
+    parentMessageId: string | null = null,
+  ) {
     if (!user) return
     const message: ChatMessage = {
       id: crypto.randomUUID(),
@@ -238,7 +268,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       sentAt: new Date().toISOString(),
       seq: 0,
       changeSeq: 0,
-      parentMessageId: null,
+      parentMessageId,
+      replyCount: 0,
+      lastReplyAt: null,
+      lastReplySeq: null,
       editedAt: null,
       deletedAt: null,
       status: 'sending',
@@ -255,6 +288,32 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     void deliver(pending)
   }
 
+  async function changeMessage(
+    method: 'EditMessage' | 'DeleteMessage',
+    payload: { messageId: string; content?: string },
+  ): Promise<string | null> {
+    const connection = connectionRef.current
+    if (!connection || connection.state !== HubConnectionState.Connected) {
+      return "You're offline. Try again when the connection is back."
+    }
+    try {
+      const response = await connection.invoke<HubResponse<Message>>(method, payload)
+      if (response.error) return response.error.message
+      applyChange(response.data, false)
+      return null
+    } catch {
+      return 'The change was not saved. Please try again.'
+    }
+  }
+
+  function editMessage(message: ChatMessage, content: string) {
+    return changeMessage('EditMessage', { messageId: message.id, content })
+  }
+
+  function deleteMessage(message: ChatMessage) {
+    return changeMessage('DeleteMessage', { messageId: message.id })
+  }
+
   function markRead(conversationId: string, seq: number) {
     if (seq <= 0) return
     markReadLocally(queryClient, conversationId, seq)
@@ -262,7 +321,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <RealtimeContext value={{ state, sendMessage, retryMessage, markRead }}>
+    <RealtimeContext
+      value={{ state, sendMessage, retryMessage, editMessage, deleteMessage, markRead }}
+    >
       {children}
     </RealtimeContext>
   )

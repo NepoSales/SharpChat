@@ -5,7 +5,15 @@ import styles from './Composer.module.css'
 const MAX_LENGTH = 4000
 const MAX_HEIGHT_PX = 240
 
-export function Composer({ conversationId, name }: { conversationId: string; name: string }) {
+type Props = {
+  conversationId: string
+  label: string
+  parentMessageId?: string
+  onEditLast?: () => void
+  autoFocus?: boolean
+}
+
+export function Composer({ conversationId, label, parentMessageId, onEditLast, autoFocus }: Props) {
   const { sendMessage } = useRealtime()
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -20,7 +28,7 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
 
   function submit() {
     if (!canSend) return
-    sendMessage(conversationId, content)
+    sendMessage(conversationId, content, parentMessageId ?? null)
     setContent('')
     requestAnimationFrame(resize)
   }
@@ -29,6 +37,9 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
       submit()
+    } else if (event.key === 'ArrowUp' && content === '' && onEditLast) {
+      event.preventDefault()
+      onEditLast()
     }
   }
 
@@ -44,8 +55,9 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
         className={styles.input}
         rows={1}
         value={content}
-        placeholder={`Message #${name}`}
-        aria-label={`Message #${name}`}
+        placeholder={label}
+        aria-label={label}
+        autoFocus={autoFocus}
         onChange={(event) => {
           setContent(event.target.value)
           resize()
@@ -54,7 +66,8 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
       />
       <div className={styles.footer}>
         <span className={styles.hint}>
-          Markdown supported · Enter to send, Shift+Enter for a new line
+          Markdown supported · Enter to send · Shift+Enter for a new line · ↑ to edit your last
+          message
         </span>
         {content.length > MAX_LENGTH * 0.9 && (
           <span className={styles.counter} data-over={content.length > MAX_LENGTH}>

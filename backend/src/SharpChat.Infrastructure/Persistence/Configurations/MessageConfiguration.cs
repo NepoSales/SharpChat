@@ -18,6 +18,8 @@ internal sealed class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasIndex(m => new { m.ConversationId, m.Seq }).IsUnique();
         builder.HasIndex(m => new { m.ConversationId, m.ChangeSeq }).IsUnique();
+        builder.HasIndex(m => new { m.ParentMessageId, m.Seq });
+        builder.Ignore(m => m.IsDeleted);
 
         builder.HasOne<Conversation>().WithMany().HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Restrict);
