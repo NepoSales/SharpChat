@@ -71,6 +71,17 @@ public sealed class MessageService(
         return await PageAsync(conversationId, parentMessageId: null, before, limit, cancellationToken);
     }
 
+    public async Task<Result<MessageDto>> GetAsync(Guid conversationId, Guid messageId, CancellationToken cancellationToken)
+    {
+        if (!await membership.IsMemberAsync(conversationId, currentUser.RequiredUserId(), cancellationToken))
+        {
+            return ConversationErrors.NotFound;
+        }
+
+        var message = await messageQueries.GetAsync(messageId, cancellationToken);
+        return message is not null && message.ConversationId == conversationId ? message : MessageErrors.NotFound;
+    }
+
     public async Task<Result<MessagePage>> GetRepliesAsync(
         Guid conversationId, Guid messageId, string? before, int? limit, CancellationToken cancellationToken)
     {

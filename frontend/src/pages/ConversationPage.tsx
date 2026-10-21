@@ -1,17 +1,42 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
+import { useAuth } from '../auth/useAuth'
 import { MembersPanel } from '../conversations/MembersPanel'
 import { useConversation, useConversations } from '../conversations/queries'
 import { Composer } from '../messages/Composer'
+import { lastEditable } from '../messages/lastEditable'
 import { MessageList } from '../messages/MessageList'
+import { useMessages } from '../messages/queries'
+import { ThreadPanel } from '../messages/ThreadPanel'
 import styles from './ConversationPage.module.css'
 
 export function ConversationPage() {
   const { conversationId } = useParams() as { conversationId: string }
   const conversation = useConversation(conversationId)
   const summary = useConversations().data?.find((item) => item.id === conversationId)
+  const history = useMessages(conversationId)
+  const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const threadId = searchParams.get('thread')
   const [showMembers, setShowMembers] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [openedThreads, setOpenedThreads] = useState<ReadonlySet<string>>(new Set())
+
+  function openThread(messageId: string) {
+    setShowMembers(false)
+    setOpenedThreads((opened) => new Set(opened).add(messageId))
+    setSearchParams({ thread: messageId })
+  }
+
+  function closeThread() {
+    setSearchParams({})
+  }
+
+  function toggleMembers() {
+    if (!showMembers) closeThread()
+    setShowMembers((shown) => !shown)
+  }
 
   if (conversation.isPending) {
     return <p className={styles.state}>Loading…</p>
@@ -28,6 +53,7 @@ export function ConversationPage() {
   }
 
   const { data } = conversation
+  const mainMessages = history.data?.pages.flatMap((page) => page.items)
 
   return (
     <div className={styles.page}>
@@ -42,7 +68,7 @@ export function ConversationPage() {
           </h1>
           <button
             className={styles.membersButton}
-            onClick={() => setShowMembers((shown) => !shown)}
+            onClick={toggleMembers}
             aria-expanded={showMembers}
           >
             {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
@@ -52,15 +78,34 @@ export function ConversationPage() {
           key={conversationId}
           conversationId={conversationId}
           members={data.members}
+          history={history}
+          editingId={editingId}
+          onEditingChange={setEditingId}
           unreadOnOpen={summary && { readSeq: summary.lastReadSeq, lastSeq: summary.lastSeq }}
+          openedThreads={openedThreads}
+          onOpenThread={openThread}
+          emptyText="No messages yet. Say hi!"
+          startText="This is the start of the conversation."
         />
         <Composer
           key={`composer-${conversationId}`}
           conversationId={conversationId}
-          name={data.name}
+          label={`Message #${data.name}`}
+          onEditLast={() => setEditingId(lastEditable(mainMessages, user?.id)?.id ?? null)}
         />
       </section>
-      {showMembers && <MembersPanel conversation={data} onClose={() => setShowMembers(false)} />}
+      {threadId && (
+        <ThreadPanel
+          key={threadId}
+          conversationId={conversationId}
+          parentId={threadId}
+          members={data.members}
+          onClose={closeThread}
+        />
+      )}
+      {showMembers && !threadId && (
+        <MembersPanel conversation={data} onClose={() => setShowMembers(false)} />
+      )}
     </div>
   )
 }

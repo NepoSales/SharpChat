@@ -102,6 +102,26 @@ public sealed class ThreadTests(SharpChatApiFactory factory)
     }
 
     [Fact]
+    public async Task A_single_message_can_be_loaded_by_members_only()
+    {
+        var alice = await TestUser.CreateAsync(factory);
+        var outsider = await TestUser.CreateAsync(factory);
+        var conversation = await alice.CreateConversationOkAsync("team");
+        var other = await alice.CreateConversationOkAsync("other");
+        await using var chat = await alice.ConnectToChatAsync(factory);
+        var message = await chat.SendOkAsync(conversation.Id, "link me");
+
+        var loaded = await alice.Client.GetFromJsonAsync<MessageDto>(
+            $"/conversations/{conversation.Id}/messages/{message.Id}", TestUser.Json);
+        var wrongConversation = await alice.Client.GetAsync($"/conversations/{other.Id}/messages/{message.Id}");
+        var byOutsider = await outsider.Client.GetAsync($"/conversations/{conversation.Id}/messages/{message.Id}");
+
+        Assert.Equal("link me", loaded!.Content);
+        Assert.Equal(HttpStatusCode.NotFound, wrongConversation.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, byOutsider.StatusCode);
+    }
+
+    [Fact]
     public async Task Non_members_cannot_read_a_thread()
     {
         var alice = await TestUser.CreateAsync(factory);

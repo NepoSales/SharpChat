@@ -272,3 +272,9 @@ New ideas go here before becoming decisions.
 | 2026-10-20 | Outbox kept in memory only; unacked messages are resent with the same id on every reconnect | Covers dropped connections; a page reload while offline loses the unsent text, an accepted trade-off for simplicity and to keep message text out of browser storage |
 | 2026-10-20 | Existing history is marked as read for current members by the sequence migration | Avoids a wall of stale unread badges after the upgrade |
 | 2026-10-20 | Standard merge text: Purpose, Changes, How to test, Notes | Every merge reads the same way on GitHub, so the history doubles as a changelog |
+| 2026-10-20 | Threads are Slack-style: replies live only in the thread panel; the parent keeps `ReplyCount`, `LastReplyAt`, `LastReplySeq` and gets a new `ChangeSeq` on every reply | The main timeline stays readable; counters are server-authoritative and reach offline clients through the normal sync |
+| 2026-10-20 | Replies don't count as unread; one read position per member covers the whole conversation; the parent shows "new" while it has replies after your read position | Long side discussions don't flood the badge of people not following them, with no extra table or events |
+| 2026-10-20 | Edit and delete go through the hub (`EditMessage`, `DeleteMessage`) and each takes a new `ChangeSeq` under the conversation lock | Same path, ordering and sync guarantees as sending |
+| 2026-10-20 | Deleted messages have their content erased on the server; deleting twice is a silent no-op | Deleted text never travels again; retries are safe |
+| 2026-10-20 | The client ignores updates to messages older than its loaded pages (they come with the page when it loads) and keeps its own sync position per conversation | An edit of an old message can't land in the newest page, and updates to unloaded parents don't trigger repeated syncs |
+

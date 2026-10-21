@@ -19,6 +19,15 @@ public sealed class MessagesController(MessageService messages) : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
     }
 
+    [HttpGet("messages/{messageId:guid}")]
+    [ProducesResponseType<MessageDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MessageDto>> GetMessage(Guid conversationId, Guid messageId, CancellationToken cancellationToken)
+    {
+        var result = await messages.GetAsync(conversationId, messageId, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+    }
+
     [HttpGet("messages/{messageId:guid}/replies")]
     [ProducesResponseType<MessagePage>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]

@@ -10,6 +10,9 @@ export type Message = {
   seq: number
   changeSeq: number
   parentMessageId: string | null
+  replyCount: number
+  lastReplyAt: string | null
+  lastReplySeq: number | null
   editedAt: string | null
   deletedAt: string | null
 }
@@ -35,7 +38,28 @@ export function getChanges(conversationId: string, after: number, signal?: Abort
   return api<MessageChanges>(`/conversations/${conversationId}/changes?after=${after}`, { signal })
 }
 
+function beforeQuery(before: string | null) {
+  return before ? `?before=${encodeURIComponent(before)}` : ''
+}
+
 export function getHistory(conversationId: string, before: string | null, signal?: AbortSignal) {
-  const query = before ? `?before=${encodeURIComponent(before)}` : ''
-  return api<MessagePage>(`/conversations/${conversationId}/messages${query}`, { signal })
+  return api<MessagePage>(`/conversations/${conversationId}/messages${beforeQuery(before)}`, {
+    signal,
+  })
+}
+
+export function getReplies(
+  conversationId: string,
+  messageId: string,
+  before: string | null,
+  signal?: AbortSignal,
+) {
+  return api<MessagePage>(
+    `/conversations/${conversationId}/messages/${messageId}/replies${beforeQuery(before)}`,
+    { signal },
+  )
+}
+
+export function getMessage(conversationId: string, messageId: string, signal?: AbortSignal) {
+  return api<Message>(`/conversations/${conversationId}/messages/${messageId}`, { signal })
 }
