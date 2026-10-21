@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SharpChat.Api.Auth;
 using SharpChat.Api.Common;
 using SharpChat.Application.Auth;
 using SharpChat.Application.Users;
+using SharpChat.Domain.Common;
 
 namespace SharpChat.Api.Controllers;
 
@@ -22,28 +24,45 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     }
 
     [HttpPost("login")]
-    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<SessionResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await auth.LoginAsync(request, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+        return StartSession(result);
     }
 
     [HttpPost("refresh")]
-    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<SessionResponse>> Refresh(CancellationToken cancellationToken)
     {
-        var result = await auth.RefreshAsync(request, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+        var result = await auth.RefreshAsync(new RefreshRequest(RefreshTokenCookie.Read(Request)), cancellationToken);
+        if (!result.IsSuccess)
+        {
+            RefreshTokenCookie.Delete(Response);
+        }
+
+        return StartSession(result);
     }
 
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout(LogoutRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        await auth.LogoutAsync(request, cancellationToken);
+        await auth.LogoutAsync(new LogoutRequest(RefreshTokenCookie.Read(Request)), cancellationToken);
+        RefreshTokenCookie.Delete(Response);
         return NoContent();
+    }
+
+    private ActionResult<SessionResponse> StartSession(Result<AuthResponse> result)
+    {
+        if (!result.IsSuccess)
+        {
+            return this.ToProblem(result.Error);
+        }
+
+        RefreshTokenCookie.Append(Response, result.Value.RefreshToken, result.Value.RefreshTokenExpiresAt);
+        return Ok(SessionResponse.From(result.Value));
     }
 }

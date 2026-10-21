@@ -1,0 +1,38 @@
+.composer {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: var(--space-3);
+  resize: none;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  line-height: 1.5;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.counter[data-over='true'] {
+  color: var(--color-error);
+}
+
+@media (max-width: 768px) {
+  .hint {
+    display: none;
+  }
+}

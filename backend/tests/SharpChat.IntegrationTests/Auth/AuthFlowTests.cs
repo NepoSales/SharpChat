@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using SharpChat.Application.Auth;
 using SharpChat.Application.Users;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Net.Http.Headers;
 using SharpChat.IntegrationTests.Infrastructure;
 
 namespace SharpChat.IntegrationTests.Auth;
@@ -10,7 +11,7 @@ namespace SharpChat.IntegrationTests.Auth;
 [Collection(ApiTestGroup.Name)]
 public sealed class AuthFlowTests(SharpChatApiFactory factory)
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
 
     [Fact]
     public async Task Register_login_refresh_and_logout()
@@ -20,8 +21,8 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
         var register = await _client.RegisterAsync(user);
         Assert.Equal(HttpStatusCode.Created, register.StatusCode);
 
-        var tokens = await (await _client.LoginAsync(user.Email, user.Password)).Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(tokens);
+        var tokens = await (await _client.LoginAsync(user.Email, user.Password)).ReadSessionAsync();
+        Assert.NotEmpty(tokens.RefreshToken);
 
         var me = await _client.GetMeAsync(tokens.AccessToken);
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
@@ -31,12 +32,11 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
 
         var refresh = await _client.RefreshAsync(tokens.RefreshToken);
         Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
-        var rotated = await refresh.Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(rotated);
+        var rotated = await refresh.ReadSessionAsync();
         Assert.NotEqual(tokens.RefreshToken, rotated.RefreshToken);
         Assert.Equal(HttpStatusCode.OK, (await _client.GetMeAsync(rotated.AccessToken)).StatusCode);
 
-        var logout = await _client.PostAsJsonAsync("/auth/logout", new LogoutRequest(rotated.RefreshToken));
+        var logout = await _client.LogoutAsync(rotated.RefreshToken);
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.RefreshAsync(rotated.RefreshToken)).StatusCode);
     }
@@ -111,8 +111,7 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
     public async Task Reusing_a_rotated_refresh_token_ends_the_session()
     {
         var first = await _client.RegisterAndLoginAsync();
-        var second = await (await _client.RefreshAsync(first.RefreshToken)).Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(second);
+        var second = await (await _client.RefreshAsync(first.RefreshToken)).ReadSessionAsync();
 
         var reuse = await _client.RefreshAsync(first.RefreshToken);
         var afterReuse = await _client.RefreshAsync(second.RefreshToken);
@@ -126,11 +125,47 @@ public sealed class AuthFlowTests(SharpChatApiFactory factory)
     {
         var user = AuthApi.NewUser();
         var laptop = await _client.RegisterAndLoginAsync(user);
-        var phone = await (await _client.LoginAsync(user.Email, user.Password)).Content.ReadFromJsonAsync<AuthResponse>();
-        Assert.NotNull(phone);
+        var phone = await (await _client.LoginAsync(user.Email, user.Password)).ReadSessionAsync();
 
-        await _client.PostAsJsonAsync("/auth/logout", new LogoutRequest(laptop.RefreshToken));
+        await _client.LogoutAsync(laptop.RefreshToken);
 
         Assert.Equal(HttpStatusCode.OK, (await _client.RefreshAsync(phone.RefreshToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_token_is_only_sent_as_a_hardened_cookie()
+    {
+        var user = AuthApi.NewUser();
+        await _client.RegisterAsync(user);
+
+        var login = await _client.LoginAsync(user.Email, user.Password);
+
+        using var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        Assert.False(body.RootElement.TryGetProperty("refreshToken", out _));
+        var cookie = login.RefreshCookie();
+        Assert.NotNull(cookie);
+        Assert.True(cookie.HttpOnly);
+        Assert.True(cookie.Secure);
+        Assert.Equal(SameSiteMode.Strict, cookie.SameSite);
+        Assert.Equal("/auth", cookie.Path.Value);
+        Assert.NotNull(cookie.Expires);
+    }
+
+    [Fact]
+    public async Task Refresh_without_a_cookie_is_unauthorized()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.RefreshAsync(refreshToken: null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_and_failed_refresh_clear_the_cookie()
+    {
+        var session = await _client.RegisterAndLoginAsync();
+
+        var logout = await _client.LogoutAsync(session.RefreshToken);
+        var failedRefresh = await _client.RefreshAsync(session.RefreshToken);
+
+        Assert.True(logout.RefreshCookie()?.Expires < DateTimeOffset.UtcNow);
+        Assert.True(failedRefresh.RefreshCookie()?.Expires < DateTimeOffset.UtcNow);
     }
 }
