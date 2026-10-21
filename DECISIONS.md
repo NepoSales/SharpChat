@@ -166,6 +166,7 @@ Details (fields, constraints, indexes) will be defined when modeling starts.
 - Rate limiting (built-in ASP.NET Core middleware) and message size limits.
 - HTTPS / WSS only.
 - Passwords hashed by ASP.NET Core Identity (never custom hashing).
+- **Tokens in the browser**: the refresh token lives only in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie; the access token lives only in memory (never `localStorage`).
 - **Markdown is untrusted input**: rendered only through `rehype-sanitize`, raw HTML in messages is never executed (XSS protection).
 
 ### Low latency
@@ -208,8 +209,6 @@ Tests are written along each phase, not only at the end.
 3. **Before a risky change** (large refactor, migration rework): push the current branch first, so there is a known-good point on GitHub.
 
 ## 10. Open decisions
-
-- **Refresh token storage in the browser** (decide in Phase 4): the API currently returns it in the JSON body. Option: move it to an `HttpOnly`, `Secure`, `SameSite=Strict` cookie so JavaScript (and XSS) can't read it.
 
 New ideas go here before becoming decisions.
 
@@ -256,3 +255,7 @@ New ideas go here before becoming decisions.
 | 2026-10-19 | `SentAt` set by the server and truncated to microseconds | Server time can't be faked by clients; matches Postgres precision, so values seen in realtime events are valid cursors |
 | 2026-10-19 | Microsoft packages on 10.0.13 (CVE-2026-70159, SignalR DoS) | Patched version; the Docker image (`aspnet:10.0`) already runs 10.0.13 |
 | 2026-10-19 | Frontend folder is `frontend/` (replaces `web/`) | Mirrors `backend/`, so the two apps read as a pair |
+| 2026-10-20 | Refresh token only in an `HttpOnly`, `Secure`, `SameSite=Strict` cookie (`__Secure-sharpchat-refresh`, path `/auth`); access token kept in memory only. `login`/`refresh` return just the access token; `refresh`/`logout` read only the cookie; logout and a failed refresh clear it | JavaScript (and so an XSS) can never read the long-lived token. `SameSite=Strict` blocks cross-site use of `refresh`/`logout`. The cookie is an HTTP concern, so it lives in the Api layer and the Application layer is unchanged |
+| 2026-10-20 | The browser calls the API under `/api` on the frontend's own origin; a proxy (Vite in dev, reverse proxy in Compose) strips the prefix and rewrites the cookie path to `/api/auth` | Same origin, so no CORS and the strict cookie works. The backend stays prefix-free, and frontend routes can't collide with API routes |
+| 2026-10-20 | Token refreshes are serialized across browser tabs with the Web Locks API | With rotation and reuse detection, two tabs refreshing with the same cookie at once would look like token theft and revoke the session |
+| 2026-10-20 | Frontend: React Router (data router), CSS Modules over the token variables, JetBrains Mono self-hosted via `@fontsource` | No CSS framework needed for one dark theme; no request to an external font CDN |
