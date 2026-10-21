@@ -2,7 +2,7 @@
 
 Working checklist for building SharpChat, phase by phase. `DECISIONS.md` says **what** and **why**; this file tracks **how far along** we are.
 
-Last update: 2026-10-18
+Last update: 2026-10-20
 
 ---
 
@@ -48,9 +48,9 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 | | |
 |---|---|
 | **Current phase** | Phase 4: React frontend |
-| **Next step** | Review the existing Vite scaffold in `frontend/` (created by the user, not committed yet), then add the design tokens from DECISIONS.md section 6 |
-| **Blockers** | None |
-| **Last session** | 2026-10-19: Phase 3 finished (SignalR hub, persisted messages, cursor history, CVE patch, 73 tests) |
+| **Next step** | User runs the integration tests (cookie auth) and smoke-tests login/register in the browser; then Layout (sidebar, chat area, input) |
+| **Blockers** | Integration tests not run this session: the shell user has no access to `/var/run/docker.sock` |
+| **Last session** | 2026-10-20: Phase 4 started (tokens, logo, auth cookie, API client, login/register) |
 
 ---
 
@@ -239,11 +239,12 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 **Goal**: usable dev chat in the browser.
 
 ### Tasks
-- [ ] `frontend/` with Vite + React + TypeScript, ESLint + Prettier (scaffold already created by the user)
-- [ ] Design tokens as CSS variables (palette from `DECISIONS.md` section 6), JetBrains Mono for code
-- [ ] Logo `#Chat` and compact `#` favicon
-- [ ] API client with access token handling and automatic refresh
-- [ ] Pages: register, login, protected routes
+- [x] `frontend/` with Vite + React + TypeScript, ESLint + Prettier (scaffold already created by the user)
+- [x] Design tokens as CSS variables (palette from `DECISIONS.md` section 6), JetBrains Mono for code
+- [x] Logo `#Chat` and compact `#` favicon
+- [x] API client with access token handling and automatic refresh
+- [x] Refresh token moved to an `HttpOnly` cookie (backend change, open decision closed)
+- [x] Pages: register, login, protected routes
 - [ ] Layout: sidebar with conversations, main chat area, message input
 - [ ] Create conversation and manage members UI
 - [ ] SignalR connection (`@microsoft/signalr`) with token, receive and send messages
@@ -364,6 +365,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-20 | 4 | Branch `phase-4-frontend`. Scaffold committed, design tokens, logo/favicon, Prettier. Refresh token moved to an HttpOnly cookie (backend + tests). API client (in-memory token, refresh serialized across tabs), auth context, login/register, route guards, Vite `/api` proxy | Run integration tests; Layout |
 | 2026-10-19 | — | Frontend folder decided: `frontend/` (not `web/`). Vite scaffold exists there, uncommitted. Local .NET runtime still 10.0.12 (user to update) | Phase 4: review scaffold |
 | 2026-10-19 | 3 | Realtime MVP: hub, send/receive, history with cursor, idempotent resend; Microsoft packages → 10.0.13 (CVE-2026-70159); code comments removed project-wide | Start Phase 4 |
 | 2026-10-18 | — | `/api` prefix removed; push rule: only the user pushes, Claude notifies | — |

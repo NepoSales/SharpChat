@@ -1,9 +1,29 @@
-import { Logo } from './components/brand/Logo'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
+import { AuthProvider } from './auth/AuthProvider'
+import { GuestOnly, RequireAuth } from './auth/RouteGuards'
+import { ChatPage } from './pages/ChatPage'
+import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
+
+const router = createBrowserRouter([
+  {
+    element: <GuestOnly />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
+  },
+  {
+    element: <RequireAuth />,
+    children: [{ path: '/', element: <ChatPage /> }],
+  },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
 
 export default function App() {
   return (
-    <main style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-      <Logo size="var(--text-xl)" />
-    </main>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   )
 }
