@@ -1,6 +1,10 @@
 namespace SharpChat.Application.Messages;
 
-public sealed record SendMessageRequest(Guid ConversationId, Guid MessageId, string Content);
+public sealed record SendMessageRequest(Guid ConversationId, Guid MessageId, string Content, Guid? ParentMessageId = null);
+
+public sealed record EditMessageRequest(Guid MessageId, string Content);
+
+public sealed record DeleteMessageRequest(Guid MessageId);
 
 public sealed record MessageDto(
     Guid Id,
@@ -12,6 +16,9 @@ public sealed record MessageDto(
     long Seq,
     long ChangeSeq,
     Guid? ParentMessageId,
+    int ReplyCount,
+    DateTimeOffset? LastReplyAt,
+    long? LastReplySeq,
     DateTimeOffset? EditedAt,
     DateTimeOffset? DeletedAt);
 

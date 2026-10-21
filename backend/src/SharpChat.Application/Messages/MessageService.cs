@@ -33,10 +33,32 @@ public sealed class MessageService(
             return stored.Error;
         }
 
-        var dto = ToDto(stored.Value, sender.UserName);
-        await notifier.MessageCreatedAsync(dto, members.Select(m => m.UserId).ToList(), cancellationToken);
+        var (message, parent) = stored.Value;
+        var recipients = members.Select(m => m.UserId).ToList();
+        var dto = ToDto(message, sender.UserName);
+        await notifier.MessageCreatedAsync(dto, recipients, cancellationToken);
+        if (parent is not null && await messageQueries.GetAsync(parent.Id, cancellationToken) is { } parentDto)
+        {
+            await notifier.MessageUpdatedAsync(parentDto, recipients, cancellationToken);
+        }
+
         return dto;
     }
+
+    public Task<Result<MessageDto>> EditAsync(Guid actorId, EditMessageRequest request, CancellationToken cancellationToken) =>
+        ChangeAsync(
+            actorId,
+            request.MessageId,
+            (message, _, changeSeq) => message.Edit(
+                actorId, request.Content, TruncateToMicroseconds(time.GetUtcNow()), changeSeq, options.Value.MaxMessageLength),
+            cancellationToken);
+
+    public Task<Result<MessageDto>> DeleteAsync(Guid actorId, DeleteMessageRequest request, CancellationToken cancellationToken) =>
+        ChangeAsync(
+            actorId,
+            request.MessageId,
+            (message, role, changeSeq) => message.Delete(actorId, role, TruncateToMicroseconds(time.GetUtcNow()), changeSeq),
+            cancellationToken);
 
     public async Task<Result<MessagePage>> GetHistoryAsync(
         Guid conversationId, string? before, int? limit, CancellationToken cancellationToken)
@@ -46,22 +68,24 @@ public sealed class MessageService(
             return ConversationErrors.NotFound;
         }
 
-        MessageCursor? cursor = null;
-        if (before is not null && !MessageCursor.TryDecode(before, out cursor))
+        return await PageAsync(conversationId, parentMessageId: null, before, limit, cancellationToken);
+    }
+
+    public async Task<Result<MessagePage>> GetRepliesAsync(
+        Guid conversationId, Guid messageId, string? before, int? limit, CancellationToken cancellationToken)
+    {
+        if (!await membership.IsMemberAsync(conversationId, currentUser.RequiredUserId(), cancellationToken))
         {
-            return MessageErrors.InvalidCursor;
+            return ConversationErrors.NotFound;
         }
 
-        var pageSize = Math.Clamp(limit ?? options.Value.DefaultHistoryPageSize, 1, ChatOptions.MaxHistoryPageSize);
+        var location = await messageQueries.GetLocationAsync(messageId, cancellationToken);
+        if (location is null || location.ConversationId != conversationId || location.ParentMessageId is not null)
+        {
+            return MessageErrors.NotFound;
+        }
 
-        var newestFirst = await messageQueries.GetBeforeAsync(conversationId, cursor, pageSize + 1, cancellationToken);
-        var page = newestFirst.Take(pageSize).Reverse().ToList();
-
-        var nextCursor = newestFirst.Count > pageSize
-            ? new MessageCursor(page[0].Seq).Encode()
-            : null;
-
-        return new MessagePage(page, nextCursor);
+        return await PageAsync(conversationId, messageId, before, limit, cancellationToken);
     }
 
     public async Task<Result<MessageChanges>> GetChangesAsync(
@@ -83,7 +107,30 @@ public sealed class MessageService(
         return new MessageChanges(changes.Take(pageSize).ToList(), changes.Count > pageSize);
     }
 
-    private async Task<Result<Message>> StoreAsync(Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
+    private async Task<Result<MessagePage>> PageAsync(
+        Guid conversationId, Guid? parentMessageId, string? before, int? limit, CancellationToken cancellationToken)
+    {
+        MessageCursor? cursor = null;
+        if (before is not null && !MessageCursor.TryDecode(before, out cursor))
+        {
+            return MessageErrors.InvalidCursor;
+        }
+
+        var pageSize = Math.Clamp(limit ?? options.Value.DefaultHistoryPageSize, 1, ChatOptions.MaxHistoryPageSize);
+
+        var newestFirst = await messageQueries.GetBeforeAsync(
+            conversationId, parentMessageId, cursor, pageSize + 1, cancellationToken);
+        var page = newestFirst.Take(pageSize).Reverse().ToList();
+
+        var nextCursor = newestFirst.Count > pageSize
+            ? new MessageCursor(page[0].Seq).Encode()
+            : null;
+
+        return new MessagePage(page, nextCursor);
+    }
+
+    private async Task<Result<(Message Message, Message? Parent)>> StoreAsync(
+        Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -92,17 +139,33 @@ public sealed class MessageService(
             var existing = await messages.GetByIdAsync(request.MessageId, cancellationToken);
             if (existing is not null)
             {
-                return existing.IsSameSend(request.ConversationId, senderId) ? existing : MessageErrors.IdConflict;
+                return existing.IsSameSend(request.ConversationId, senderId, request.ParentMessageId)
+                    ? (existing, null)
+                    : MessageErrors.IdConflict;
             }
 
-            var created = Message.Create(
-                request.MessageId,
-                request.ConversationId,
-                senderId,
-                request.Content,
-                TruncateToMicroseconds(time.GetUtcNow()),
-                write.NextSeq,
-                options.Value.MaxMessageLength);
+            var sentAt = TruncateToMicroseconds(time.GetUtcNow());
+            var maxLength = options.Value.MaxMessageLength;
+            Message? parent = null;
+            Result<Message> created;
+
+            if (request.ParentMessageId is { } parentId)
+            {
+                parent = await messages.GetByIdAsync(parentId, cancellationToken);
+                if (parent is null || parent.ConversationId != request.ConversationId)
+                {
+                    return MessageErrors.ParentNotFound;
+                }
+
+                var replySeq = write.TakeSeq();
+                created = parent.Reply(request.MessageId, senderId, request.Content, sentAt, replySeq, write.TakeSeq(), maxLength);
+            }
+            else
+            {
+                created = Message.Create(
+                    request.MessageId, request.ConversationId, senderId, request.Content, sentAt, write.TakeSeq(), maxLength);
+            }
+
             if (!created.IsSuccess)
             {
                 return created.Error;
@@ -111,12 +174,60 @@ public sealed class MessageService(
             messages.Add(created.Value);
             await messages.SaveChangesAsync(cancellationToken);
             await write.CommitAsync(cancellationToken);
-            return created.Value;
+            return (created.Value, parent);
         }
         catch (DuplicateKeyException)
         {
             return MessageErrors.IdConflict;
         }
+    }
+
+    private async Task<Result<MessageDto>> ChangeAsync(
+        Guid actorId,
+        Guid messageId,
+        Func<Message, ConversationRole, long, Result> change,
+        CancellationToken cancellationToken)
+    {
+        var location = await messageQueries.GetLocationAsync(messageId, cancellationToken);
+        if (location is null)
+        {
+            return MessageErrors.NotFound;
+        }
+
+        var members = await conversationQueries.ListMembersAsync(location.ConversationId, cancellationToken);
+        var actor = members.FirstOrDefault(m => m.UserId == actorId);
+        if (actor is null)
+        {
+            return MessageErrors.NotFound;
+        }
+
+        var changed = false;
+        await using (var write = await messages.BeginSequencedWriteAsync(location.ConversationId, cancellationToken))
+        {
+            var message = (await messages.GetByIdAsync(messageId, cancellationToken))!;
+            var changeSeqBefore = message.ChangeSeq;
+
+            var result = change(message, actor.Role, write.TakeSeq());
+            if (!result.IsSuccess)
+            {
+                return result.Error;
+            }
+
+            if (message.ChangeSeq != changeSeqBefore)
+            {
+                await messages.SaveChangesAsync(cancellationToken);
+                await write.CommitAsync(cancellationToken);
+                changed = true;
+            }
+        }
+
+        var dto = (await messageQueries.GetAsync(messageId, cancellationToken))!;
+        if (changed)
+        {
+            await notifier.MessageUpdatedAsync(dto, members.Select(m => m.UserId).ToList(), cancellationToken);
+        }
+
+        return dto;
     }
 
     private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value) =>
@@ -132,6 +243,9 @@ public sealed class MessageService(
         message.Seq,
         message.ChangeSeq,
         message.ParentMessageId,
+        message.ReplyCount,
+        message.LastReplyAt,
+        message.LastReplySeq,
         message.EditedAt,
         message.DeletedAt);
 }

@@ -17,12 +17,14 @@ public sealed class ChatClient : IAsyncDisposable
     private readonly HubConnection _connection;
     private readonly Channel<MessageDto> _received = Channel.CreateUnbounded<MessageDto>();
     private readonly Channel<ReceiptDto> _receipts = Channel.CreateUnbounded<ReceiptDto>();
+    private readonly Channel<MessageDto> _updates = Channel.CreateUnbounded<MessageDto>();
 
     private ChatClient(HubConnection connection)
     {
         _connection = connection;
         _connection.On<MessageDto>(nameof(IChatClient.MessageReceived), message => _received.Writer.TryWrite(message));
         _connection.On<ReceiptDto>(nameof(IChatClient.ReceiptUpdated), receipt => _receipts.Writer.TryWrite(receipt));
+        _connection.On<MessageDto>(nameof(IChatClient.MessageUpdated), message => _updates.Writer.TryWrite(message));
     }
 
     public static async Task<ChatClient> ConnectAsync<T>(WebApplicationFactory<T> factory, string? accessToken)
@@ -55,6 +57,35 @@ public sealed class ChatClient : IAsyncDisposable
         var response = await SendAsync(conversationId, content);
         Assert.Null(response.Error);
         return response.Data!;
+    }
+
+    public Task<HubResponse<MessageDto>> ReplyAsync(Guid conversationId, Guid parentMessageId, string content) =>
+        _connection.InvokeAsync<HubResponse<MessageDto>>(
+            nameof(ChatHub.SendMessage), new SendMessageRequest(conversationId, Guid.NewGuid(), content, parentMessageId));
+
+    public async Task<MessageDto> ReplyOkAsync(Guid conversationId, Guid parentMessageId, string content)
+    {
+        var response = await ReplyAsync(conversationId, parentMessageId, content);
+        Assert.Null(response.Error);
+        return response.Data!;
+    }
+
+    public Task<HubResponse<MessageDto>> EditAsync(Guid messageId, string content) =>
+        _connection.InvokeAsync<HubResponse<MessageDto>>(nameof(ChatHub.EditMessage), new EditMessageRequest(messageId, content));
+
+    public Task<HubResponse<MessageDto>> DeleteAsync(Guid messageId) =>
+        _connection.InvokeAsync<HubResponse<MessageDto>>(nameof(ChatHub.DeleteMessage), new DeleteMessageRequest(messageId));
+
+    public async Task<MessageDto> NextUpdateAsync()
+    {
+        using var timeout = new CancellationTokenSource(ReceiveTimeout);
+        return await _updates.Reader.ReadAsync(timeout.Token);
+    }
+
+    public async Task AssertNoUpdateAsync(TimeSpan wait)
+    {
+        await Task.Delay(wait);
+        Assert.False(_updates.Reader.TryRead(out var unexpected), $"Unexpected update of {unexpected?.Id}");
     }
 
     public Task<HubResponse<ReceiptDto>> MarkDeliveredAsync(Guid conversationId, long seq) =>

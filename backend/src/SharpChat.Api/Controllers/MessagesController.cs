@@ -19,6 +19,21 @@ public sealed class MessagesController(MessageService messages) : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
     }
 
+    [HttpGet("messages/{messageId:guid}/replies")]
+    [ProducesResponseType<MessagePage>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MessagePage>> GetReplies(
+        Guid conversationId,
+        Guid messageId,
+        [FromQuery] string? before,
+        [FromQuery] int? limit,
+        CancellationToken cancellationToken)
+    {
+        var result = await messages.GetRepliesAsync(conversationId, messageId, before, limit, cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : this.ToProblem(result.Error);
+    }
+
     [HttpGet("changes")]
     [ProducesResponseType<MessageChanges>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]

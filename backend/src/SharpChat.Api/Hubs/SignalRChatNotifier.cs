@@ -9,6 +9,9 @@ internal sealed class SignalRChatNotifier(IHubContext<ChatHub, IChatClient> hub)
     public Task MessageCreatedAsync(MessageDto message, IReadOnlyCollection<Guid> recipientIds, CancellationToken cancellationToken) =>
         Users(recipientIds).MessageReceived(message);
 
+    public Task MessageUpdatedAsync(MessageDto message, IReadOnlyCollection<Guid> recipientIds, CancellationToken cancellationToken) =>
+        Users(recipientIds).MessageUpdated(message);
+
     public Task ReceiptUpdatedAsync(ReceiptDto receipt, IReadOnlyCollection<Guid> recipientIds, CancellationToken cancellationToken) =>
         Users(recipientIds).ReceiptUpdated(receipt);
 
