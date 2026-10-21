@@ -50,9 +50,9 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 | | |
 |---|---|
 | **Current phase** | Phase 5: Reliability |
-| **Next step** | Design the reconnect sync (messages after the last received one) and the delivered/read model |
+| **Next step** | User checks in the browser: restart the API mid-conversation and confirm nothing is lost or duplicated, tags and unread badges; then close Phase 5 |
 | **Blockers** | None |
-| **Last session** | 2026-10-20: Phase 4 finished (browser app, cookie auth, Swagger, Compose frontend behind nginx) |
+| **Last session** | 2026-10-20: Phase 5 implemented (sequence, sync, receipts, outbox, tags); waiting for the browser check |
 
 ---
 
@@ -289,14 +289,17 @@ Backend paths in this file (`src/...`, `tests/...`, `Directory.*.props`) are rel
 **Goal**: robust chat (no lost or duplicated messages).
 
 ### Tasks
-- [ ] Idempotent send: same message Id twice → stored once, sender gets the same ack
-- [ ] Client retry with the same Id until acked; pending messages shown as "sending"
-- [ ] Reconnect sync: client asks for everything after its last received message, including edits/deletions while offline
-- [ ] Delivered status (client acknowledges receipt)
-- [ ] Read status (updates `ConversationMember` last read message)
-- [ ] Unread counters per conversation
-- [ ] Frontend: status indicators (sent → delivered → read), reconnect handling, connection state banner
-- [ ] Integration tests: duplicate send, disconnect/reconnect sync, status transitions
+- [x] Idempotent send: same message Id twice → stored once, sender gets the same ack
+- [x] Client retry with the same Id until acked; pending messages shown as "sending"
+- [x] Reconnect sync: client asks for everything after its last received message, including edits/deletions while offline (`ChangeSeq` is ready for edits/deletes; Phase 6 bumps it)
+- [x] Delivered status (client acknowledges receipt)
+- [x] Read status (updates `ConversationMember` last read message)
+- [x] Unread counters per conversation
+- [x] Frontend: status indicators (sent → delivered → read), reconnect handling, connection state banner
+- [x] Integration tests: duplicate send, disconnect/reconnect sync, status transitions
+- [x] Per-conversation sequence (`Seq`, `ChangeSeq`) with a row lock on send; migration backfills existing messages
+- [x] Status shown as terminal tags: `[sending]`, `[sent]`, `[delivered k/N]`, `[read k/N]`, `[failed] retry`
+- [x] Client unit tests: tag rules and cache merge
 
 ### Done when
 - [ ] Killing the connection mid-conversation and reconnecting loses and duplicates nothing
@@ -386,6 +389,7 @@ Short notes per session (newest first). Keep each entry to a few lines.
 
 | Date | Phase | What was done | Next step |
 |---|---|---|---|
+| 2026-10-20 | 5 | Rule: merges only on GitHub by the user. Seq per conversation (row lock), `changes` endpoint, delivered/read receipts to authors only, unread counts; frontend outbox, resync on reconnect, gap detection, terminal tags, unread badges, connection banner. 49 unit + 51 integration + 24 frontend tests | Browser check, close Phase 5 |
 | 2026-10-20 | 4 | Browser flow confirmed by the user; CSP font fix (no inlined fonts); Phase 4 done and merged into develop | Start Phase 5 |
 | 2026-10-20 | 4 | Swagger UI at `/swagger` (chore, merged into develop and the phase branch). App shell: sidebar, conversation page, new conversation dialog, members panel (add, role, remove, leave), TanStack Query. Proxy chain checked end to end. SignalR provider, composer (optimistic send, retry), history with upward infinite scroll; two-client test through the proxy passes. Markdown + Shiki + sanitization (13 component tests), frontend in Compose behind nginx (CSP, `/api` proxy, WebSockets) | Browser check, close Phase 4 |
 | 2026-10-20 | 4 | Branch `phase-4-frontend`. Scaffold committed, design tokens, logo/favicon, Prettier. Refresh token moved to an HttpOnly cookie (backend + tests). API client (in-memory token, refresh serialized across tabs), auth context, login/register, route guards, Vite `/api` proxy | Run integration tests; Layout |

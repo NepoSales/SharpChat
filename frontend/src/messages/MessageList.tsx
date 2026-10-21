@@ -1,5 +1,7 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
+import type { Member } from '../api/conversations'
 import { useAuth } from '../auth/useAuth'
+import { useRealtime } from '../realtime/useRealtime'
 import type { ChatMessage } from './cache'
 import { MessageItem } from './MessageItem'
 import styles from './MessageList.module.css'
@@ -9,8 +11,14 @@ const GROUP_WINDOW_MS = 5 * 60_000
 const LOAD_MORE_THRESHOLD_PX = 200
 const NEAR_BOTTOM_PX = 120
 
-export function MessageList({ conversationId }: { conversationId: string }) {
+type Props = {
+  conversationId: string
+  members: Member[]
+}
+
+export function MessageList({ conversationId, members }: Props) {
   const { user } = useAuth()
+  const { markRead } = useRealtime()
   const history = useMessages(conversationId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const nearBottomRef = useRef(true)
@@ -23,7 +31,27 @@ export function MessageList({ conversationId }: { conversationId: string }) {
     : []
   const firstId = messages.at(0)?.id
   const lastMessage = messages.at(-1)
+  const lastSeq = messages.reduce((max, message) => Math.max(max, message.seq), 0)
+  const otherMembers = members.filter((member) => member.userId !== user?.id)
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history
+
+  function markReadIfSeen() {
+    if (document.visibilityState !== 'visible' || !document.hasFocus()) return
+    if (!nearBottomRef.current) return
+    markRead(conversationId, lastSeq)
+  }
+
+  const tryMarkRead = useEffectEvent(markReadIfSeen)
+
+  useEffect(() => {
+    tryMarkRead()
+    window.addEventListener('focus', tryMarkRead)
+    document.addEventListener('visibilitychange', tryMarkRead)
+    return () => {
+      window.removeEventListener('focus', tryMarkRead)
+      document.removeEventListener('visibilitychange', tryMarkRead)
+    }
+  }, [lastSeq])
 
   useLayoutEffect(() => {
     const element = scrollRef.current
@@ -60,6 +88,7 @@ export function MessageList({ conversationId }: { conversationId: string }) {
     if (element.scrollTop < LOAD_MORE_THRESHOLD_PX && hasNextPage && !isFetchingNextPage) {
       void fetchNextPage()
     }
+    markReadIfSeen()
   }
 
   return (
@@ -79,6 +108,7 @@ export function MessageList({ conversationId }: { conversationId: string }) {
           key={message.id}
           message={message}
           showHeader={startsGroup(messages[index - 1], message)}
+          otherMembers={message.senderId === user?.id ? otherMembers : null}
         />
       ))}
     </div>

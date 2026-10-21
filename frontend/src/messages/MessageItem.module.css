@@ -21,31 +21,45 @@
   font-weight: 600;
 }
 
-.time,
-.status {
+.time {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
+.body {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
 .content {
+  flex: 1;
   min-width: 0;
 }
 
-.status,
-.failed {
-  margin: 0;
+.tag {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
-.failed {
-  font-size: var(--text-xs);
+.tag[data-tone='accent'] {
+  color: var(--color-accent);
+}
+
+.tag[data-tone='error'] {
   color: var(--color-error);
 }
 
 .retry {
+  margin-left: var(--space-1);
   padding: 0;
   background: none;
   border: none;
   color: var(--color-accent);
-  font-size: inherit;
+  font: inherit;
+  text-decoration: underline;
   cursor: pointer;
 }

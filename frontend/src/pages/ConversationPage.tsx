@@ -47,7 +47,7 @@ export function ConversationPage() {
             {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
           </button>
         </header>
-        <MessageList key={conversationId} conversationId={conversationId} />
+        <MessageList key={conversationId} conversationId={conversationId} members={data.members} />
         <Composer
           key={`composer-${conversationId}`}
           conversationId={conversationId}

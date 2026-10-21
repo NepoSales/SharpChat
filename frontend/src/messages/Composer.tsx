@@ -6,11 +6,10 @@ const MAX_LENGTH = 4000
 const MAX_HEIGHT_PX = 240
 
 export function Composer({ conversationId, name }: { conversationId: string; name: string }) {
-  const { state, sendMessage } = useRealtime()
+  const { sendMessage } = useRealtime()
   const [content, setContent] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const connected = state === 'connected'
-  const canSend = connected && content.trim().length > 0 && content.length <= MAX_LENGTH
+  const canSend = content.trim().length > 0 && content.length <= MAX_LENGTH
 
   function resize() {
     const textarea = textareaRef.current
@@ -21,7 +20,7 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
 
   function submit() {
     if (!canSend) return
-    void sendMessage(conversationId, content)
+    sendMessage(conversationId, content)
     setContent('')
     requestAnimationFrame(resize)
   }
@@ -45,7 +44,7 @@ export function Composer({ conversationId, name }: { conversationId: string; nam
         className={styles.input}
         rows={1}
         value={content}
-        placeholder={connected ? `Message #${name}` : 'Connecting…'}
+        placeholder={`Message #${name}`}
         aria-label={`Message #${name}`}
         onChange={(event) => {
           setContent(event.target.value)
