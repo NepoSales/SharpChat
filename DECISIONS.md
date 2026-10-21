@@ -81,7 +81,7 @@ sharpchat/
 | Markdown / code | `react-markdown` + `rehype-sanitize` (safe rendering) + Shiki (syntax highlighting) |
 | Containers | Docker + Docker Compose |
 | Tests | xUnit + Testcontainers |
-| Observability | OpenTelemetry (instrumentation) + Prometheus (metrics) + Loki (logs, via Serilog) + Jaeger (traces) + Grafana (dashboards) + health checks |
+| Observability | OpenTelemetry (instrumentation) + OpenTelemetry Collector (routing) + Prometheus (metrics) + Loki (logs, via Serilog) + Jaeger (traces) + Grafana (dashboards) + health checks |
 
 **Responsibility split:**
 - REST: register, login, refresh token, create/list conversations, manage members, load message history and thread replies.
@@ -286,3 +286,10 @@ New ideas go here before becoming decisions.
 | 2026-10-20 | Load balancer: the frontend's nginx with an upstream (`least_conn`, shared `zone`) over `api-1` and `api-2` | No extra service; the shared zone makes all nginx workers balance together |
 | 2026-10-20 | Both instances run migrations on startup in Development; EF Core's migration lock makes the second one wait | Checked with two containers against an empty database: one applies, the other finds it up to date |
 
+| 2026-10-21 | Telemetry leaves the API through one OTLP endpoint to an OpenTelemetry Collector, which sends traces to Jaeger, metrics to Prometheus (its OTLP receiver) and logs to Loki (its OTLP endpoint) | The API knows a single destination; swapping a backend is a Collector config change. No scrape targets to list per instance |
+| 2026-10-21 | Logs stay on Serilog (console + OTLP sink); OpenTelemetry is only registered when `OTEL_EXPORTER_OTLP_ENDPOINT` is set | Each log line carries `trace_id`/`span_id`, so Grafana jumps from a log to its trace. Tests and runs without the stack pay nothing |
+| 2026-10-21 | Observability services live in the `observability` Compose profile; the APIs always point at the Collector | `docker compose up` stays light; `--profile observability` adds the stack without editing env vars. Without the Collector the exporters just drop data |
+| 2026-10-21 | Custom metrics in a `SharpChat` meter: messages sent (message/reply), send duration with outcome (created/duplicate/rejected), edits/deletes, presence transitions, hub calls rate limited. Hub connections, HTTP and REST rate-limit metrics come from ASP.NET Core's built-in meters | Measures what only the app knows (idempotent retries, presence) and reuses what the framework already emits |
+| 2026-10-21 | Grafana dashboards (API, Messaging, Runtime) are generated JSON, provisioned read-only, with anonymous admin access on port 3001 | Ready on first start with no login for a local demo; not a production setup |
+| 2026-10-21 | `OnConnectedAsync` no longer uses the connection's abort token and undoes the registry entry if presence fails | SignalR runs `OnConnectedAsync` after the handshake and skips `OnDisconnectedAsync` when it throws; a tab closed in that window stayed online forever (found by the presence metric test) |
+| 2026-10-21 | nginx re-resolves `api-1`/`api-2` through Docker's DNS (`resolve` on the upstream servers) | Recreating an API container changed its IP and nginx kept the old one until restarted |

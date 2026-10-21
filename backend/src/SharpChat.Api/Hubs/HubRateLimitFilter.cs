@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
 using SharpChat.Api.RateLimiting;
+using SharpChat.Application.Diagnostics;
 
 namespace SharpChat.Api.Hubs;
 
-internal sealed class HubRateLimitFilter(HubRateLimiters limiters) : IHubFilter
+internal sealed class HubRateLimitFilter(HubRateLimiters limiters, ChatMetrics metrics) : IHubFilter
 {
     private static readonly HashSet<string> MessageMethods =
         [nameof(ChatHub.SendMessage), nameof(ChatHub.EditMessage), nameof(ChatHub.DeleteMessage)];
@@ -27,6 +28,7 @@ internal sealed class HubRateLimitFilter(HubRateLimiters limiters) : IHubFilter
             return await next(invocationContext);
         }
 
+        metrics.HubRateLimited(method);
         return method == nameof(ChatHub.Typing)
             ? null
             : HubResponse<object>.Fail("rate_limited", "You are sending messages too fast. Please wait a moment.");
