@@ -1,4 +1,5 @@
 import { formatShortTime } from '../components/ui/format'
+import { Markdown } from '../markdown/Markdown'
 import { useRealtime } from '../realtime/useRealtime'
 import type { ChatMessage } from './cache'
 import styles from './MessageItem.module.css'
@@ -21,7 +22,9 @@ export function MessageItem({ message, showHeader }: Props) {
           </time>
         </header>
       )}
-      <div className={styles.content}>{message.content}</div>
+      <div className={styles.content}>
+        <Markdown content={message.content} />
+      </div>
       {message.status === 'sending' && <p className={styles.status}>Sending…</p>}
       {message.status === 'failed' && (
         <p className={styles.failed}>
