@@ -1,0 +1,12 @@
+.logo {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hash {
+  color: var(--color-accent);
+}
