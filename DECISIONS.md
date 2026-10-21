@@ -200,6 +200,7 @@ Tests are written along each phase, not only at the end.
 | Phase branches | `phase-N-<name>` (e.g. `phase-1-auth`), created from `develop`, deleted after the merge (on GitHub). Non-phase work uses `chore-<name>` |
 | Merges | Done **only by me, on GitHub** (never locally). Claude tells me when a branch is ready to merge into `develop`. Merge commits keep each phase visible as a group in the history |
 | Commits | English, imperative summary line, a body listing what changed. A phase is merged only when its tests pass |
+| Merge text | Every merge (pull request) uses the same template, in English: title `Phase N: <name> (<key points>)`, then `## Purpose` (why, which phase it closes), `## Changes` (grouped by Backend / Frontend / Docs and repo), `## How to test` (commands + manual check) and `## Notes` (limitations, optional). Claude writes it when the branch is ready |
 | Push | Done **only by me**. Claude never pushes; it tells me when a push is recommended, at the strategic points below |
 
 **Strategic push points** (Claude notifies me, I push):
@@ -270,4 +271,4 @@ New ideas go here before becoming decisions.
 | 2026-10-20 | Group status: delivered/read counted over all other members, shown as terminal-style tags (`[delivered k/N]`, `[read k/N]`, accent when everyone read) | Informative in groups and fits the dev-chat look, instead of copying WhatsApp's check marks |
 | 2026-10-20 | Outbox kept in memory only; unacked messages are resent with the same id on every reconnect | Covers dropped connections; a page reload while offline loses the unsent text, an accepted trade-off for simplicity and to keep message text out of browser storage |
 | 2026-10-20 | Existing history is marked as read for current members by the sequence migration | Avoids a wall of stale unread badges after the upgrade |
-
+| 2026-10-20 | Standard merge text: Purpose, Changes, How to test, Notes | Every merge reads the same way on GitHub, so the history doubles as a changelog |
