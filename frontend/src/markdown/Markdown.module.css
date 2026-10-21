@@ -1,0 +1,65 @@
+.markdown {
+  overflow-wrap: anywhere;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p {
+  margin: 0 0 var(--space-2);
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-6);
+}
+
+.markdown blockquote {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.markdown :not(pre) > code {
+  padding: 0.1em 0.35em;
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.markdown table {
+  display: block;
+  max-width: 100%;
+  margin: 0 0 var(--space-2);
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
