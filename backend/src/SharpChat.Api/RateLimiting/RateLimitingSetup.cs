@@ -15,6 +15,8 @@ internal static class RateLimitingSetup
 {
     public const string AuthPolicy = "auth";
 
+    public const string UploadPolicy = "uploads";
+
     public static IServiceCollection AddSharpChatRateLimiting(this IServiceCollection services)
     {
         services.AddOptions<RateLimitingOptions>()
@@ -35,6 +37,9 @@ internal static class RateLimitingSetup
 
                 options.AddPolicy(AuthPolicy, context =>
                     Partition(redis, $"{limits.KeyPrefix}:auth:{ClientAddress(context)}", limits.Auth));
+
+                options.AddPolicy(UploadPolicy, context =>
+                    Partition(redis, $"{limits.KeyPrefix}:uploads:{Caller(context)}", limits.Uploads));
 
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     Partition(redis, $"{limits.KeyPrefix}:api:{Caller(context)}", limits.Api));

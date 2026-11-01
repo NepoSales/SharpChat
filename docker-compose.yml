@@ -14,9 +14,12 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env (see .env.example)}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://otel-collector:4317}
       OTEL_METRIC_EXPORT_INTERVAL: "15000"
+      Storage__RootPath: /data/attachments
       InstanceName: api-1
     ports:
       - "8080:8080"
+    volumes:
+      - attachments-data:/data/attachments
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +127,7 @@ services:
       - jaeger
 
 volumes:
+  attachments-data:
   postgres-data:
   redis-data:
   prometheus-data:

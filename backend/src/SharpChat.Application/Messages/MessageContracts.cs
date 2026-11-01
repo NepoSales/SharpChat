@@ -1,6 +1,13 @@
+using SharpChat.Application.Attachments;
+
 namespace SharpChat.Application.Messages;
 
-public sealed record SendMessageRequest(Guid ConversationId, Guid MessageId, string Content, Guid? ParentMessageId = null);
+public sealed record SendMessageRequest(
+    Guid ConversationId,
+    Guid MessageId,
+    string Content,
+    Guid? ParentMessageId = null,
+    IReadOnlyList<Guid>? AttachmentIds = null);
 
 public sealed record EditMessageRequest(Guid MessageId, string Content);
 
@@ -20,7 +27,8 @@ public sealed record MessageDto(
     DateTimeOffset? LastReplyAt,
     long? LastReplySeq,
     DateTimeOffset? EditedAt,
-    DateTimeOffset? DeletedAt);
+    DateTimeOffset? DeletedAt,
+    IReadOnlyList<AttachmentDto> Attachments);
 
 public sealed record MessagePage(IReadOnlyList<MessageDto> Items, string? NextCursor);
 
