@@ -6,6 +6,7 @@ import { formatShortTime } from '../components/ui/format'
 import { userColor } from '../components/ui/userColor'
 import { Markdown } from '../markdown/Markdown'
 import { useRealtime } from '../realtime/useRealtime'
+import { AttachmentList } from './AttachmentList'
 import type { ChatMessage } from './cache'
 import { MessageEditor } from './MessageEditor'
 import styles from './MessageItem.module.css'
@@ -86,6 +87,7 @@ export function MessageItem({
               initialContent={message.content}
               onSave={(content) => editMessage(message, content)}
               onCancel={() => onEditingChange(false)}
+              allowEmpty={message.attachments.length > 0}
             />
           ) : (
             <div className={styles.body}>
@@ -94,7 +96,13 @@ export function MessageItem({
                   <p className={styles.deleted}>message deleted</p>
                 ) : (
                   <>
-                    <Markdown content={message.content} />
+                    {message.content.trim() && <Markdown content={message.content} />}
+                    {message.attachments.length > 0 && (
+                      <AttachmentList
+                        conversationId={message.conversationId}
+                        attachments={message.attachments}
+                      />
+                    )}
                     {message.editedAt && (
                       <span
                         className={styles.edited}

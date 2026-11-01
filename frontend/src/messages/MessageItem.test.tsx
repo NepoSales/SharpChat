@@ -37,6 +37,7 @@ function message(extra: Partial<ChatMessage> = {}): ChatMessage {
     lastReplySeq: null,
     editedAt: null,
     deletedAt: null,
+    attachments: [],
     ...extra,
   }
 }
