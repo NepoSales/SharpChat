@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Options;
 using SharpChat.Application.Abstractions;
+using SharpChat.Application.Attachments;
 using SharpChat.Application.Common;
 using SharpChat.Application.Conversations;
 using SharpChat.Application.Diagnostics;
+using SharpChat.Domain.Attachments;
 using SharpChat.Domain.Common;
 using SharpChat.Domain.Conversations;
 using SharpChat.Domain.Messages;
@@ -11,6 +13,7 @@ namespace SharpChat.Application.Messages;
 
 public sealed class MessageService(
     IMessageRepository messages,
+    IAttachmentRepository attachments,
     IMessageQueries messageQueries,
     IConversationQueries conversationQueries,
     MembershipService membership,
@@ -34,7 +37,11 @@ public sealed class MessageService(
             request.MessageId,
             MessageChange.Edited,
             (message, _, changeSeq) => message.Edit(
-                actorId, request.Content, TruncateToMicroseconds(time.GetUtcNow()), changeSeq, options.Value.MaxMessageLength),
+                actorId,
+                request.Content ?? string.Empty,
+                TruncateToMicroseconds(time.GetUtcNow()),
+                changeSeq,
+                options.Value.MaxMessageLength),
             cancellationToken);
 
     public Task<Result<MessageDto>> DeleteAsync(Guid actorId, DeleteMessageRequest request, CancellationToken cancellationToken) =>
@@ -43,7 +50,8 @@ public sealed class MessageService(
             request.MessageId,
             MessageChange.Deleted,
             (message, role, changeSeq) => message.Delete(actorId, role, TruncateToMicroseconds(time.GetUtcNow()), changeSeq),
-            cancellationToken);
+            cancellationToken,
+            DeleteAttachmentsAsync);
 
     public async Task<Result<MessagePage>> GetHistoryAsync(
         Guid conversationId, string? before, int? limit, CancellationToken cancellationToken)
@@ -141,9 +149,11 @@ public sealed class MessageService(
             return (stored.Error, SendOutcome.Rejected);
         }
 
-        var (message, parent, created) = stored.Value;
+        var (message, parent, linked, created) = stored.Value;
         var recipients = members.Select(m => m.UserId).ToList();
-        var dto = ToDto(message, sender.UserName);
+        var dto = created
+            ? ToDto(message, sender.UserName, linked)
+            : (await messageQueries.GetAsync(message.Id, cancellationToken))!;
         await notifier.MessageCreatedAsync(dto, recipients, cancellationToken);
         if (parent is not null && await messageQueries.GetAsync(parent.Id, cancellationToken) is { } parentDto)
         {
@@ -159,7 +169,7 @@ public sealed class MessageService(
         return (dto, SendOutcome.Created);
     }
 
-    private async Task<Result<(Message Message, Message? Parent, bool Created)>> StoreAsync(
+    private async Task<Result<(Message Message, Message? Parent, IReadOnlyList<Attachment> Attachments, bool Created)>> StoreAsync(
         Guid senderId, SendMessageRequest request, CancellationToken cancellationToken)
     {
         try
@@ -170,9 +180,19 @@ public sealed class MessageService(
             if (existing is not null)
             {
                 return existing.IsSameSend(request.ConversationId, senderId, request.ParentMessageId)
-                    ? (existing, null, false)
+                    ? (existing, null, [], false)
                     : MessageErrors.IdConflict;
             }
+
+            var loaded = await LoadAttachmentsAsync(request.AttachmentIds, cancellationToken);
+            if (!loaded.IsSuccess)
+            {
+                return loaded.Error;
+            }
+
+            var linked = loaded.Value;
+            var hasAttachments = linked.Count > 0;
+            var content = request.Content ?? string.Empty;
 
             var sentAt = TruncateToMicroseconds(time.GetUtcNow());
             var maxLength = options.Value.MaxMessageLength;
@@ -188,12 +208,20 @@ public sealed class MessageService(
                 }
 
                 var replySeq = write.TakeSeq();
-                created = parent.Reply(request.MessageId, senderId, request.Content, sentAt, replySeq, write.TakeSeq(), maxLength);
+                created = parent.Reply(
+                    request.MessageId, senderId, content, sentAt, replySeq, write.TakeSeq(), maxLength, hasAttachments);
             }
             else
             {
                 created = Message.Create(
-                    request.MessageId, request.ConversationId, senderId, request.Content, sentAt, write.TakeSeq(), maxLength);
+                    request.MessageId,
+                    request.ConversationId,
+                    senderId,
+                    content,
+                    sentAt,
+                    write.TakeSeq(),
+                    maxLength,
+                    hasAttachments);
             }
 
             if (!created.IsSuccess)
@@ -201,10 +229,19 @@ public sealed class MessageService(
                 return created.Error;
             }
 
+            foreach (var attachment in linked)
+            {
+                var link = attachment.LinkTo(request.MessageId, request.ConversationId, senderId);
+                if (!link.IsSuccess)
+                {
+                    return link.Error;
+                }
+            }
+
             messages.Add(created.Value);
             await messages.SaveChangesAsync(cancellationToken);
             await write.CommitAsync(cancellationToken);
-            return (created.Value, parent, true);
+            return (created.Value, parent, linked, true);
         }
         catch (DuplicateKeyException)
         {
@@ -217,7 +254,8 @@ public sealed class MessageService(
         Guid messageId,
         MessageChange kind,
         Func<Message, ConversationRole, long, Result> change,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<Message, CancellationToken, Task>? onChanged = null)
     {
         var location = await messageQueries.GetLocationAsync(messageId, cancellationToken);
         if (location is null)
@@ -246,6 +284,11 @@ public sealed class MessageService(
 
             if (message.ChangeSeq != changeSeqBefore)
             {
+                if (onChanged is not null)
+                {
+                    await onChanged(message, cancellationToken);
+                }
+
                 await messages.SaveChangesAsync(cancellationToken);
                 await write.CommitAsync(cancellationToken);
                 changed = true;
@@ -262,10 +305,48 @@ public sealed class MessageService(
         return dto;
     }
 
+    private async Task<Result<IReadOnlyList<Attachment>>> LoadAttachmentsAsync(
+        IReadOnlyList<Guid>? attachmentIds, CancellationToken cancellationToken)
+    {
+        if (attachmentIds is null || attachmentIds.Count == 0)
+        {
+            return Result<IReadOnlyList<Attachment>>.Success([]);
+        }
+
+        var ids = attachmentIds.Distinct().ToList();
+        var max = options.Value.MaxAttachmentsPerMessage;
+        if (ids.Count > max)
+        {
+            return AttachmentErrors.TooMany(max);
+        }
+
+        var found = await attachments.GetByIdsAsync(ids, cancellationToken);
+        if (found.Count != ids.Count)
+        {
+            return AttachmentErrors.Unavailable;
+        }
+
+        var byId = found.ToDictionary(a => a.Id);
+        return Result<IReadOnlyList<Attachment>>.Success(ids.Select(id => byId[id]).ToList());
+    }
+
+    private async Task DeleteAttachmentsAsync(Message message, CancellationToken cancellationToken)
+    {
+        if (!message.HasAttachments)
+        {
+            return;
+        }
+
+        foreach (var attachment in await attachments.GetByMessageIdAsync(message.Id, cancellationToken))
+        {
+            attachment.Delete(message.DeletedAt!.Value);
+        }
+    }
+
     private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value) =>
         new(value.UtcTicks - (value.UtcTicks % TimeSpan.TicksPerMicrosecond), TimeSpan.Zero);
 
-    private static MessageDto ToDto(Message message, string senderUserName) => new(
+    private static MessageDto ToDto(Message message, string senderUserName, IReadOnlyList<Attachment> attachments) => new(
         message.Id,
         message.ConversationId,
         message.SenderId,
@@ -279,5 +360,6 @@ public sealed class MessageService(
         message.LastReplyAt,
         message.LastReplySeq,
         message.EditedAt,
-        message.DeletedAt);
+        message.DeletedAt,
+        attachments.Select(AttachmentDto.From).ToList());
 }

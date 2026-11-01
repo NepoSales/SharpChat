@@ -7,6 +7,7 @@ import {
 } from '@microsoft/signalr'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Attachment } from '../api/attachments'
 import { getChanges, type Message, type Receipt } from '../api/messages'
 import { API_BASE, getAccessToken } from '../api/session'
 import { useAuth } from '../auth/useAuth'
@@ -76,6 +77,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         messageId: message.id,
         content: message.content,
         parentMessageId: message.parentMessageId,
+        attachmentIds: message.attachments.map((attachment) => attachment.id),
       })
       outboxRef.current.delete(message.id)
       if (response.error) {
@@ -288,6 +290,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     conversationId: string,
     content: string,
     parentMessageId: string | null = null,
+    attachments: Attachment[] = [],
   ) {
     if (!user) return
     const message: ChatMessage = {
@@ -305,6 +308,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       lastReplySeq: null,
       editedAt: null,
       deletedAt: null,
+      attachments,
       status: 'sending',
     }
     outboxRef.current.set(message.id, message)

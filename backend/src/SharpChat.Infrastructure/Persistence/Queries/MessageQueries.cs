@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SharpChat.Application.Abstractions;
+using SharpChat.Application.Attachments;
 using SharpChat.Application.Messages;
 using SharpChat.Domain.Messages;
 
@@ -19,7 +20,8 @@ internal sealed class MessageQueries(SharpChatDbContext db) : IMessageQueries
             query = query.Where(m => m.Seq < before.Seq);
         }
 
-        return await ToDtos(query.OrderByDescending(m => m.Seq).Take(limit)).ToListAsync(cancellationToken);
+        return await WithAttachmentsAsync(
+            await ToDtos(query.OrderByDescending(m => m.Seq).Take(limit)).ToListAsync(cancellationToken), cancellationToken);
     }
 
     public async Task<IReadOnlyList<MessageDto>> GetChangesAfterAsync(
@@ -31,11 +33,14 @@ internal sealed class MessageQueries(SharpChatDbContext db) : IMessageQueries
             .OrderBy(m => m.ChangeSeq)
             .Take(limit);
 
-        return await ToDtos(query).ToListAsync(cancellationToken);
+        return await WithAttachmentsAsync(await ToDtos(query).ToListAsync(cancellationToken), cancellationToken);
     }
 
-    public Task<MessageDto?> GetAsync(Guid messageId, CancellationToken cancellationToken) =>
-        ToDtos(db.Messages.AsNoTracking().Where(m => m.Id == messageId)).FirstOrDefaultAsync(cancellationToken);
+    public async Task<MessageDto?> GetAsync(Guid messageId, CancellationToken cancellationToken)
+    {
+        var message = await ToDtos(db.Messages.AsNoTracking().Where(m => m.Id == messageId)).FirstOrDefaultAsync(cancellationToken);
+        return message is null ? null : (await WithAttachmentsAsync([message], cancellationToken))[0];
+    }
 
     public Task<MessageLocation?> GetLocationAsync(Guid messageId, CancellationToken cancellationToken) =>
         db.Messages
@@ -43,6 +48,37 @@ internal sealed class MessageQueries(SharpChatDbContext db) : IMessageQueries
             .Where(m => m.Id == messageId)
             .Select(m => new MessageLocation(m.ConversationId, m.ParentMessageId))
             .FirstOrDefaultAsync(cancellationToken);
+
+    private async Task<List<MessageDto>> WithAttachmentsAsync(List<MessageDto> messages, CancellationToken cancellationToken)
+    {
+        var ids = messages.Where(m => m.DeletedAt is null).Select(m => m.Id).ToList();
+        if (ids.Count == 0)
+        {
+            return messages;
+        }
+
+        var attachments = await db.Attachments
+            .AsNoTracking()
+            .Where(a => a.MessageId != null && ids.Contains(a.MessageId.Value) && a.DeletedAt == null)
+            .OrderBy(a => a.UploadedAt)
+            .ThenBy(a => a.Id)
+            .Select(a => new
+            {
+                MessageId = a.MessageId!.Value,
+                Dto = new AttachmentDto(a.Id, a.FileName, a.ContentType, a.Kind, a.SizeBytes),
+            })
+            .ToListAsync(cancellationToken);
+
+        if (attachments.Count == 0)
+        {
+            return messages;
+        }
+
+        var byMessage = attachments.ToLookup(a => a.MessageId, a => a.Dto);
+        return messages
+            .Select(m => byMessage.Contains(m.Id) ? m with { Attachments = byMessage[m.Id].ToList() } : m)
+            .ToList();
+    }
 
     private IQueryable<MessageDto> ToDtos(IQueryable<Message> messages) =>
         messages.Join(db.Users, m => m.SenderId, u => u.Id, (m, u) => new MessageDto(
@@ -59,5 +95,6 @@ internal sealed class MessageQueries(SharpChatDbContext db) : IMessageQueries
             m.LastReplyAt,
             m.LastReplySeq,
             m.EditedAt,
-            m.DeletedAt));
+            m.DeletedAt,
+            Array.Empty<AttachmentDto>()));
 }

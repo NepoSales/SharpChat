@@ -26,6 +26,8 @@ public sealed class Message
     public DateTimeOffset? EditedAt { get; private set; }
     public DateTimeOffset? DeletedAt { get; private set; }
 
+    public bool HasAttachments { get; private set; }
+
     public bool IsDeleted => DeletedAt is not null;
 
     public static Result<Message> Create(
@@ -35,7 +37,8 @@ public sealed class Message
         string content,
         DateTimeOffset sentAt,
         long seq,
-        int maxContentLength)
+        int maxContentLength,
+        bool hasAttachments = false)
     {
         if (id == Guid.Empty)
         {
@@ -44,7 +47,7 @@ public sealed class Message
 
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(seq);
 
-        var invalid = ValidateContent(content, maxContentLength);
+        var invalid = ValidateContent(content, maxContentLength, hasAttachments);
         if (invalid is not null)
         {
             return invalid;
@@ -59,6 +62,7 @@ public sealed class Message
             SentAt = sentAt,
             Seq = seq,
             ChangeSeq = seq,
+            HasAttachments = hasAttachments,
         };
     }
 
@@ -69,7 +73,8 @@ public sealed class Message
         DateTimeOffset sentAt,
         long seq,
         long parentChangeSeq,
-        int maxContentLength)
+        int maxContentLength,
+        bool hasAttachments = false)
     {
         if (ParentMessageId is not null)
         {
@@ -83,7 +88,7 @@ public sealed class Message
 
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(parentChangeSeq, seq);
 
-        var created = Create(id, ConversationId, senderId, content, sentAt, seq, maxContentLength);
+        var created = Create(id, ConversationId, senderId, content, sentAt, seq, maxContentLength, hasAttachments);
         if (!created.IsSuccess)
         {
             return created;
@@ -109,7 +114,7 @@ public sealed class Message
             return MessageErrors.NotAuthor;
         }
 
-        var invalid = ValidateContent(content, maxContentLength);
+        var invalid = ValidateContent(content, maxContentLength, HasAttachments);
         if (invalid is not null)
         {
             return invalid;
@@ -142,9 +147,9 @@ public sealed class Message
     public bool IsSameSend(Guid conversationId, Guid senderId, Guid? parentMessageId) =>
         ConversationId == conversationId && SenderId == senderId && ParentMessageId == parentMessageId;
 
-    private static Error? ValidateContent(string content, int maxContentLength)
+    private static Error? ValidateContent(string content, int maxContentLength, bool hasAttachments)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        if (string.IsNullOrWhiteSpace(content) && !hasAttachments)
         {
             return MessageErrors.EmptyContent;
         }

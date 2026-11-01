@@ -1,3 +1,4 @@
+import type { Attachment } from './attachments'
 import { api } from './client'
 
 export type Message = {
@@ -15,6 +16,7 @@ export type Message = {
   lastReplySeq: number | null
   editedAt: string | null
   deletedAt: string | null
+  attachments: Attachment[]
 }
 
 export type MessagePage = {

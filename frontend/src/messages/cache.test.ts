@@ -32,6 +32,7 @@ function message(id: string, seq: number, extra: Partial<ChatMessage> = {}): Cha
     lastReplySeq: null,
     editedAt: null,
     deletedAt: null,
+    attachments: [],
     ...extra,
   }
 }

@@ -14,6 +14,8 @@ public sealed class SharpChatApiFactory : WebApplicationFactory<Program>, IAsync
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine").Build();
 
+    public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), $"sharpchat-tests-{Guid.NewGuid():N}");
+
     public string PostgresConnectionString => _postgres.GetConnectionString();
 
     public string RedisConnectionString => _redis.GetConnectionString();
@@ -29,16 +31,23 @@ public sealed class SharpChatApiFactory : WebApplicationFactory<Program>, IAsync
         builder.UseSetting("ConnectionStrings:Postgres", _postgres.GetConnectionString());
         builder.UseSetting("ConnectionStrings:Redis", _redis.GetConnectionString());
         builder.UseSetting("Jwt:SigningKey", JwtSigningKey);
+        builder.UseSetting("Storage:RootPath", StorageRoot);
+        builder.UseSetting("Storage:CleanupEnabled", "false");
         builder.UseSetting("RateLimiting:Auth:PermitLimit", "100000");
         builder.UseSetting("RateLimiting:Api:PermitLimit", "100000");
         builder.UseSetting("RateLimiting:HubMessages:PermitLimit", "100000");
         builder.UseSetting("RateLimiting:Typing:PermitLimit", "100000");
+        builder.UseSetting("RateLimiting:Uploads:PermitLimit", "100000");
     }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
         await DisposeAsync();
         await Task.WhenAll(_postgres.DisposeAsync().AsTask(), _redis.DisposeAsync().AsTask());
+        if (Directory.Exists(StorageRoot))
+        {
+            Directory.Delete(StorageRoot, recursive: true);
+        }
     }
 }
 

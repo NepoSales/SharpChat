@@ -64,6 +64,12 @@ public sealed class ChatClient : IAsyncDisposable
         return response.Data!;
     }
 
+    public Task<HubResponse<MessageDto>> SendWithAttachmentsAsync(
+        Guid conversationId, string content, IReadOnlyList<Guid> attachmentIds, Guid? messageId = null) =>
+        _connection.InvokeAsync<HubResponse<MessageDto>>(
+            nameof(ChatHub.SendMessage),
+            new SendMessageRequest(conversationId, messageId ?? Guid.NewGuid(), content, AttachmentIds: attachmentIds));
+
     public Task<HubResponse<MessageDto>> ReplyAsync(Guid conversationId, Guid parentMessageId, string content) =>
         _connection.InvokeAsync<HubResponse<MessageDto>>(
             nameof(ChatHub.SendMessage), new SendMessageRequest(conversationId, Guid.NewGuid(), content, parentMessageId));
