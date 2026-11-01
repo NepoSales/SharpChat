@@ -21,7 +21,7 @@
 ## Highlights
 
 - **No lost or duplicated messages.** Clients generate message ids, so retries are idempotent. Every message is stored before it is broadcast. Each conversation has a gap-free sequence assigned under a row lock, so after a reconnect the client asks for "everything after N" and catches up, edits and deletions included.
-- **Membership enforced on the server.** Every send, read and realtime event is checked against the database. Non-members get `404`, so they can't even tell a conversation exists. Markdown is sanitized and the frontend runs under a strict Content-Security-Policy.
+- **Membership enforced on the server.** Every send, read and realtime event is checked against the database. Non-members get `404`, so they can't even tell a conversation exists. Markdown is sanitized, uploaded files are typed by their content and served with `nosniff` and a sandbox policy, and the frontend runs under a strict Content-Security-Policy.
 - **Scales out.** Two API instances run behind nginx without sticky sessions. The SignalR Redis backplane delivers across instances, and presence (Lua scripts) and rate limits live in Redis, so they hold no matter which instance a client lands on.
 - **Observable.** OpenTelemetry traces, metrics and logs flow through a Collector into Prometheus, Loki and Jaeger, with three provisioned Grafana dashboards. Logs link to their traces. Adding it surfaced real bugs, a presence leak among them, now fixed and covered by tests.
 - **Tested against real infrastructure.** Integration tests use Testcontainers (PostgreSQL, Redis), real SignalR clients and a second API instance. CI runs the backend, frontend and Docker builds on every pull request.
@@ -31,6 +31,7 @@
 - Group conversations (up to 100 members) with Owner, Admin and Member roles
 - Markdown messages with syntax-highlighted code blocks ([Shiki](https://shiki.style))
 - Slack-style threads, editing and deletion
+- Attachments: paste, drop or pick images (shown inline, click to enlarge), PDFs, ZIPs, logs and source files, up to 4 per message
 - Delivery and read receipts as terminal tags (`[sent]`, `[delivered 2/3]`, `[read 3/3]`) and unread counters
 - Presence, "X is typing…", reconnect banner with automatic resync
 - Sessions with short-lived JWTs and a rotating refresh token in an `HttpOnly` cookie
@@ -137,9 +138,9 @@ npm run test:coverage && npm run lint && npm run format:check # what CI runs on 
 
 | Suite | What it covers |
 |---|---|
-| Unit (xUnit) | Domain rules (roles, member limit, thread depth, edit/delete permissions), validation, token handling |
-| Integration (xUnit + Testcontainers) | The real API with PostgreSQL and Redis: auth flow and refresh token reuse, membership enforcement, realtime delivery with SignalR clients, idempotent sends, reconnect sync, receipts, threads, a second instance behind the backplane, presence, rate limits, concurrency conflicts, custom metrics |
-| Frontend (Vitest + Testing Library) | Markdown sanitization (XSS), message actions and states, receipt tags, cache merging, session refresh, typing throttle |
+| Unit (xUnit) | Domain rules (roles, member limit, thread depth, edit/delete permissions, attachment linking), validation, file type detection, file name sanitizing, token handling |
+| Integration (xUnit + Testcontainers) | The real API with PostgreSQL and Redis: auth flow and refresh token reuse, membership enforcement, realtime delivery with SignalR clients, idempotent sends, reconnect sync, receipts, threads, a second instance behind the backplane, presence, rate limits, concurrency conflicts, custom metrics, attachment upload/download, ownership and cleanup |
+| Frontend (Vitest + Testing Library) | Markdown sanitization (XSS), message actions and states, receipt tags, cache merging, session refresh, typing throttle, uploads in the composer, attachment rendering |
 
 ## Project structure
 

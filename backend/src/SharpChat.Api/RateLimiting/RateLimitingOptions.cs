@@ -13,6 +13,8 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule Api { get; set; } = new(300, 60);
 
+    public RateLimitRule Uploads { get; set; } = new(20, 60);
+
     public RateLimitRule HubMessages { get; set; } = new(30, 10);
 
     public RateLimitRule Typing { get; set; } = new(2, 4);

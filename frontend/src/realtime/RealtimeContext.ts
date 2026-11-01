@@ -1,4 +1,5 @@
 import { createContext } from 'react'
+import type { Attachment } from '../api/attachments'
 import type { Message } from '../api/messages'
 import type { ChatMessage } from '../messages/cache'
 
@@ -24,7 +25,12 @@ export type RealtimeEvent = keyof RealtimeEventMap
 
 export type RealtimeContextValue = {
   state: ConnectionState
-  sendMessage: (conversationId: string, content: string, parentMessageId?: string | null) => void
+  sendMessage: (
+    conversationId: string,
+    content: string,
+    parentMessageId?: string | null,
+    attachments?: Attachment[],
+  ) => void
   retryMessage: (message: ChatMessage) => void
   editMessage: (message: ChatMessage, content: string) => Promise<string | null>
   deleteMessage: (message: ChatMessage) => Promise<string | null>

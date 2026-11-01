@@ -18,6 +18,7 @@ using SharpChat.Infrastructure.Persistence;
 using SharpChat.Infrastructure.Persistence.Queries;
 using SharpChat.Infrastructure.Persistence.Repositories;
 using SharpChat.Infrastructure.Presence;
+using SharpChat.Infrastructure.Storage;
 using StackExchange.Redis;
 
 namespace SharpChat.Infrastructure;
@@ -53,12 +54,22 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<StorageOptions>()
+            .BindConfiguration(StorageOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddSingleton<IFileStorage, DiskFileStorage>();
+        services.AddScoped<AttachmentCleanup>();
+        services.AddHostedService<AttachmentCleanupService>();
+
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IConversationQueries, ConversationQueries>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageQueries, MessageQueries>();
+        services.AddScoped<IAttachmentRepository, AttachmentRepository>();
         services.AddScoped<IReceiptStore, ReceiptStore>();
         services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
         services.AddSingleton<ITokenService, JwtTokenService>();

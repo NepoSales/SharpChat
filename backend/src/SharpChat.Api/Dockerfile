@@ -18,6 +18,7 @@ RUN dotnet publish src/SharpChat.Api/SharpChat.Api.csproj -c Release -o /app --n
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app ./
+RUN mkdir -p /data/attachments && chown $APP_UID /data/attachments
 USER $APP_UID
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "SharpChat.Api.dll"]

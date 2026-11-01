@@ -90,7 +90,7 @@ public sealed class ChatHubTests(SharpChatApiFactory factory)
         var first = await chat.SendAsync(conversation.Id, "once", messageId);
         var retry = await chat.SendAsync(conversation.Id, "once", messageId);
 
-        Assert.Equal(first.Data, retry.Data);
+        Assert.Equivalent(first.Data, retry.Data, strict: true);
         var history = await alice.GetHistoryAsync(conversation.Id);
         Assert.Equal([messageId], history.Items.Select(m => m.Id));
     }

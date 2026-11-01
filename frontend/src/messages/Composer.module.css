@@ -2,10 +2,43 @@
   padding: 0 var(--space-4) var(--space-3);
 }
 
+.composer[data-dragging='true'] .field {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.field {
+  position: relative;
+}
+
+.attach {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2.5rem;
+  height: calc(1.5em + 2 * var(--space-3) + 2px);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.attach:hover,
+.attach:focus-visible {
+  color: var(--color-accent);
+  outline: none;
+}
+
 .input {
   display: block;
   width: 100%;
   padding: var(--space-3);
+  padding-left: 2.5rem;
   resize: none;
   background: var(--color-elevated);
   border: 1px solid var(--color-border);
@@ -25,6 +58,10 @@
   padding-top: var(--space-1);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+}
+
+.notice {
+  color: var(--color-warning);
 }
 
 .counter[data-over='true'] {

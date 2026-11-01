@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using SharpChat.Domain.Attachments;
 using SharpChat.Domain.Auth;
 using SharpChat.Domain.Conversations;
 using SharpChat.Domain.Messages;
@@ -15,6 +16,7 @@ public sealed class SharpChatDbContext(DbContextOptions<SharpChatDbContext> opti
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationMember> ConversationMembers => Set<ConversationMember>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

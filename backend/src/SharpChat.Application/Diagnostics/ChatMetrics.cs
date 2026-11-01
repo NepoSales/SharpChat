@@ -27,6 +27,8 @@ public sealed class ChatMetrics
     private readonly Counter<long> _messagesChanged;
     private readonly Counter<long> _presenceTransitions;
     private readonly Counter<long> _hubRateLimited;
+    private readonly Counter<long> _attachmentsUploaded;
+    private readonly Counter<long> _attachmentBytesUploaded;
 
     public ChatMetrics(IMeterFactory meterFactory)
     {
@@ -45,6 +47,10 @@ public sealed class ChatMetrics
             "sharpchat.presence.transitions", "{transition}", "Users going online (first connection) or offline (last connection).");
         _hubRateLimited = meter.CreateCounter<long>(
             "sharpchat.hub.rate_limited", "{invocation}", "Hub invocations rejected by the rate limiter.");
+        _attachmentsUploaded = meter.CreateCounter<long>(
+            "sharpchat.attachments.uploaded", "{file}", "Files accepted by the upload endpoint.");
+        _attachmentBytesUploaded = meter.CreateCounter<long>(
+            "sharpchat.attachments.uploaded.size", "By", "Bytes stored by the upload endpoint.");
     }
 
     public void MessageSent(bool isReply) =>
@@ -60,6 +66,13 @@ public sealed class ChatMetrics
 
     public void PresenceChanged(bool isOnline) =>
         _presenceTransitions.Add(1, new KeyValuePair<string, object?>("sharpchat.presence.state", isOnline ? "online" : "offline"));
+
+    public void AttachmentUploaded(string kind, long sizeBytes)
+    {
+        var tag = new KeyValuePair<string, object?>("sharpchat.attachment.kind", kind);
+        _attachmentsUploaded.Add(1, tag);
+        _attachmentBytesUploaded.Add(sizeBytes, tag);
+    }
 
     public void HubRateLimited(string method) =>
         _hubRateLimited.Add(1, new KeyValuePair<string, object?>("sharpchat.hub.method", method));

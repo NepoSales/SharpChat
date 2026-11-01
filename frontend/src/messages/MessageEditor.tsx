@@ -8,13 +8,15 @@ type Props = {
   initialContent: string
   onSave: (content: string) => Promise<string | null>
   onCancel: () => void
+  allowEmpty?: boolean
 }
 
-export function MessageEditor({ initialContent, onSave, onCancel }: Props) {
+export function MessageEditor({ initialContent, onSave, onCancel, allowEmpty = false }: Props) {
   const [content, setContent] = useState(initialContent)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const canSave = content.trim().length > 0 && content.length <= MAX_LENGTH && !saving
+  const canSave =
+    (allowEmpty || content.trim().length > 0) && content.length <= MAX_LENGTH && !saving
 
   async function save() {
     if (!canSave) return

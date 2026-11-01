@@ -30,6 +30,7 @@ function message(seq: number, status?: ChatMessage['status']): ChatMessage {
     lastReplySeq: null,
     editedAt: null,
     deletedAt: null,
+    attachments: [],
     status,
   }
 }
